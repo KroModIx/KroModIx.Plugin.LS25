@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -9,14 +10,14 @@ using KroModIx.Plugin.LS25.Views;
 
 namespace KroModIx.Plugin.LS25;
 
-public sealed class Ls25Plugin : IGameModPlugin
+public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
 {
     public PluginMetadata Metadata { get; } = new(
         Id: "kroste.ls25",
         DisplayName: "Landwirtschafts-Simulator 25",
-        Version: "1.0.0",
+        Version: "1.7.0",
         Author: "Kroste",
-        Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung über zentralen Host-Provider (IHostServices.Ai).");
+        Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung, grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Einträgen (IUpdateNotifier).");
 
     public IReadOnlyList<GameTarget> Targets { get; } = new[]
     {
@@ -36,6 +37,8 @@ public sealed class Ls25Plugin : IGameModPlugin
     private CatalogCache? _cache;
     private ModPreviewService? _previews;
     private DownloadEventBus? _downloadBus;
+    private ModHubUpdateChecker? _updateChecker;
+    private IReadOnlyList<DetectedGame> _activatedGames = Array.Empty<DetectedGame>();
     private readonly Dictionary<string, ModInstallService> _installers = new();
     private readonly Dictionary<string, ModBackupService> _backups = new();
     private readonly ModDescReader _reader = new();
@@ -52,6 +55,8 @@ public sealed class Ls25Plugin : IGameModPlugin
         _modhoster = new ModhosterCatalogService(host.CreateHttpClient("modhoster"));
         _previews = new ModPreviewService(_paths, _reader, host.CreateHttpClient("previews"));
         _downloadBus = new DownloadEventBus();
+        _updateChecker = new ModHubUpdateChecker(_cache);
+        _activatedGames = activatedGames;
 
         foreach (var game in activatedGames)
         {
@@ -90,6 +95,34 @@ public sealed class Ls25Plugin : IGameModPlugin
         _modhoster?.Dispose();
         _host?.Logger.Info("LS25 shutdown");
         return Task.CompletedTask;
+    }
+
+    // ---- IUpdateNotifier (Contracts v1.7.0) ----
+
+    /// <summary>Zählt neue ModHub-Einträge seit dem letzten Katalog-Tab-Besuch
+    /// pro aktiviertem Zielspiel. Baseline via Seen-Snapshot in
+    /// <see cref="CatalogCache.SaveSeenSnapshot"/> — der wird beim Öffnen des
+    /// ModHub-Tabs geschrieben und beim „Neuer Snapshot" gepatcht. Bis der
+    /// User den Tab einmal besucht hat, gibt es keinen Badge (0 → gerendert
+    /// wird kein Badge, weil der Host bei count=0 nichts zeigt).</summary>
+    public Task<IReadOnlyList<GameUpdateInfo>> GetPendingUpdatesAsync(CancellationToken cancellationToken)
+    {
+        if (_updateChecker is null || _activatedGames.Count == 0)
+            return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(Array.Empty<GameUpdateInfo>());
+
+        // ModHub-Sprache ist plugin-intern hart auf "de" (siehe ModHubViewModel).
+        // Sobald das konfigurierbar wird, hier aus Ls25Settings holen.
+        const string language = "de";
+        var count = _updateChecker.CountUnseen(language);
+        if (count <= 0)
+            return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(Array.Empty<GameUpdateInfo>());
+
+        var summary = $"{count} neue Mods im ModHub-Katalog seit deinem letzten Besuch";
+        var result = _activatedGames
+            .Where(g => g.Target.SteamAppId is int)
+            .Select(g => new GameUpdateInfo(g.Target.SteamAppId!.Value, count, summary))
+            .ToList();
+        return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(result);
     }
 
     private sealed class InstalledTab : IGameTabContribution

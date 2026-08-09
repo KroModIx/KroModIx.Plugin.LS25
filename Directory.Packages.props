@@ -1,6 +1,7 @@
 <Project>
   <ItemGroup>
-    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.0.0" />
+    <!-- v1.7.0: IUpdateNotifier (grüne ↑-Badges pro Sidebar-Kachel). -->
+    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.7.0" />
     <PackageVersion Include="Avalonia" Version="12.1.0" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="MinVer" Version="7.0.0" />

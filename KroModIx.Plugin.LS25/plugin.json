@@ -2,12 +2,12 @@
   "schema": 1,
   "id": "kroste.ls25",
   "displayName": "Landwirtschafts-Simulator 25",
-  "version": "1.0.0",
+  "version": "1.7.0",
   "author": "Kroste",
-  "description": "Mod-Manager für den Landwirtschafts-Simulator 25 (FS25) — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung über zentralen Host-Provider (IHostServices.Ai). Kein eigener Settings-Tab mehr — KI-Config im Host-Settings-Fenster.",
+  "description": "Mod-Manager für den Landwirtschafts-Simulator 25 (FS25) — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung über zentralen Host-Provider (IHostServices.Ai). Ab v1.7.0 zusätzlich grüner ↑-Badge auf der FS25-Kachel wenn neue Mods im ModHub-Katalog seit dem letzten Tab-Besuch aufgetaucht sind (via IUpdateNotifier).",
   "assembly": "KroModIx.Plugin.LS25.dll",
   "entryType": "KroModIx.Plugin.LS25.Ls25Plugin",
-  "minHostVersion": "0.5.0",
+  "minHostVersion": "1.7.0",
   "targets": [
     {
       "gameId": "farming-simulator-25",
