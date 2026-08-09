@@ -7,7 +7,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 
-namespace ModManager.Plugins.LS25.Views;
+namespace KroModIx.Plugin.LS25.Views;
 
 /// <summary>
 /// Detail-Fenster für einen GIANTS-Mod. Custom-Chrome (borderless), Drag

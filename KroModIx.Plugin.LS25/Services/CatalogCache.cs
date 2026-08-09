@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Persistenter Katalog-Cache. GIANTS liefert keinen search-Parameter, wir

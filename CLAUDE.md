@@ -1,14 +1,14 @@
-# ModManager.Plugins.LS25
+# KroModIx.Plugin.LS25
 
 ## Grundlagen
 
-- **Was:** LS25-Mod-Manager als Plugin für Kroste ModManager. Extraktion des
+- **Was:** LS25-Mod-Manager als Plugin für KroModIx. Extraktion des
   LS-ModManager-Kerns; Zielspiel: FS25 (Steam App-ID 2300320).
-- **Stack:** .NET 10, `Kroste.ModManager.PluginContracts` als PackageReference
+- **Stack:** .NET 10, `KroModIx.Plugin.Contracts` als PackageReference
   aus GitHub Packages, Avalonia (Compile-Zeit, kommt vom Host mit).
-- **Repo:** `github.com/Kroste/ModManager.Plugins.LS25`
-- **Deploy-Ziel:** `~/.config/ModManager/plugins/ls25/` (Linux) bzw.
-  `%APPDATA%\ModManager\plugins\ls25\` (Windows).
+- **Repo:** `github.com/Kroste/KroModIx.Plugin.LS25`
+- **Deploy-Ziel:** `~/.config/KroModIx/plugins/ls25/` (Linux) bzw.
+  `%APPDATA%\KroModIx\plugins\ls25\` (Windows).
 
 ## Aktueller Stand
 
@@ -85,7 +85,7 @@
   wir haben zwar keinen LoadContext, aber Code-only ist trotzdem stabiler).
 - **NuGet-Feed:** `nuget.config` bindet `kroste-github` (GitHub Packages) ein.
   Lokal braucht der Entwickler-PAT mit `read:packages`-Scope. CI nutzt `GITHUB_TOKEN`.
-- **Plugin-Bundle:** Release-Workflow packt `ModManager.Plugins.LS25.dll` +
-  `plugin.json` als `ModManager.Plugins.LS25-X.Y.Z.zip`.
+- **Plugin-Bundle:** Release-Workflow packt `KroModIx.Plugin.LS25.dll` +
+  `plugin.json` als `KroModIx.Plugin.LS25-X.Y.Z.zip`.
 - **LS-ModManager-Standalone**: bleibt existieren, wird nicht angetastet. Ab v0.1
   landen neue LS25-Features hier im Plugin, nicht mehr im standalone LS-ModManager.

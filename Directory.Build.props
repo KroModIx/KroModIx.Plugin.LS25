@@ -7,7 +7,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <Authors>Lars Oste</Authors>
-    <RepositoryUrl>https://github.com/Kroste/ModManager.Plugins.LS25</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Kroste/KroModIx.Plugin.LS25</RepositoryUrl>
     <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
   <ItemGroup>

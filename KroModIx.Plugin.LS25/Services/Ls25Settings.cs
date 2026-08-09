@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Plugin-lokale Einstellungen (Ollama-Endpoint, Modell). Persistiert in

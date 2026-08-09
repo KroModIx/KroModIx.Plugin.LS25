@@ -8,10 +8,10 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ModManager.PluginContracts;
-using ModManager.Plugins.LS25.Services;
+using KroModIx.Plugin.Contracts;
+using KroModIx.Plugin.LS25.Services;
 
-namespace ModManager.Plugins.LS25.Views;
+namespace KroModIx.Plugin.LS25.Views;
 
 public sealed partial class InstalledModsViewModel : ObservableObject
 {

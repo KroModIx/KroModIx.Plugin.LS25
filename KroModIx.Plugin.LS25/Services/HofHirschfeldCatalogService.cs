@@ -4,7 +4,7 @@ using System.Web;
 using HtmlAgilityPack;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Dritte Katalog-Quelle: <c>hof-hirschfeld.de</c> (Community-Umbauten,

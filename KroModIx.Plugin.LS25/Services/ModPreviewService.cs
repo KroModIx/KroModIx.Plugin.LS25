@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Extrahiert und cached Preview-Bilder — für Installiert-Tab aus dem

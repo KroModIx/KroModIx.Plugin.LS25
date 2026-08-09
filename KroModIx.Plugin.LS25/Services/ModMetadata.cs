@@ -1,4 +1,4 @@
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>Aus modDesc.xml gelesene Mod-Metadaten. Übernommen aus
 /// LS-ModManager mit identischer Struktur.</summary>

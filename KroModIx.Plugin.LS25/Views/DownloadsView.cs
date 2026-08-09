@@ -7,7 +7,7 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 
-namespace ModManager.Plugins.LS25.Views;
+namespace KroModIx.Plugin.LS25.Views;
 
 /// <summary>
 /// Downloads-Tab im Kroste-Card-Look. Rows als Cards mit Preview-Cover (aus

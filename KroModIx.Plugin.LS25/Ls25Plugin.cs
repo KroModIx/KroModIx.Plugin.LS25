@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using ModManager.PluginContracts;
-using ModManager.Plugins.LS25.Services;
-using ModManager.Plugins.LS25.Views;
+using KroModIx.Plugin.Contracts;
+using KroModIx.Plugin.LS25.Services;
+using KroModIx.Plugin.LS25.Views;
 
-namespace ModManager.Plugins.LS25;
+namespace KroModIx.Plugin.LS25;
 
 public sealed class Ls25Plugin : IGameModPlugin
 {
     public PluginMetadata Metadata { get; } = new(
         Id: "kroste.ls25",
         DisplayName: "Landwirtschafts-Simulator 25",
-        Version: "0.11.1",
+        Version: "1.0.0",
         Author: "Kroste",
         Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung über zentralen Host-Provider (IHostServices.Ai).");
 

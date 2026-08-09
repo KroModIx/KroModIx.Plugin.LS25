@@ -58,15 +58,15 @@ jobs:
         # Pfim, SkiaSharp inkl. runtimes/ native libs).
         run: |
           mkdir -p bundle
-          cp -r ModManager.Plugins.LS25/bin/Release/net10.0/. bundle/
+          cp -r KroModIx.Plugin.LS25/bin/Release/net10.0/. bundle/
           find bundle -type f \( -name '*.pdb' -o -name '*.xml' -o -name '*.deps.json' \) -delete
           cd bundle
-          zip -r "../ModManager.Plugins.LS25-${{ steps.ver.outputs.v }}.zip" .
+          zip -r "../KroModIx.Plugin.LS25-${{ steps.ver.outputs.v }}.zip" .
 
       - name: GitHub-Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v3
         with:
-          files: ModManager.Plugins.LS25-*.zip
+          files: KroModIx.Plugin.LS25-*.zip
           generate_release_notes: true
           fail_on_unmatched_files: true

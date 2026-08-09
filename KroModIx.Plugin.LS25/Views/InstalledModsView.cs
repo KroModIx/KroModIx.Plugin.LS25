@@ -12,7 +12,7 @@ using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 
-namespace ModManager.Plugins.LS25.Views;
+namespace KroModIx.Plugin.LS25.Views;
 
 /// <summary>
 /// Installiert-Tab im Kroste-Card-Look. Toolbar in Sektionen SPIEL / INSTALLATION

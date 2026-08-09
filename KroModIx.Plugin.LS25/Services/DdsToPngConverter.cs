@@ -6,7 +6,7 @@ using Pfim;
 using SkiaSharp;
 using PfimImageFormat = Pfim.ImageFormat;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Konvertiert DDS-Bytes (LS/FS-Mod-Icons) in PNG-Bytes für den Preview-Cache.

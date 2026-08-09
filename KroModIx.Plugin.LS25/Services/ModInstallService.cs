@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Kern-Operationen für Mods im lokalen Mods-Ordner: List, Install, Uninstall,

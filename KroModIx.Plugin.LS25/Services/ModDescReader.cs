@@ -6,7 +6,7 @@ using System.Linq;
 using System.Xml.Linq;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Liest <c>modDesc.xml</c> aus einer LS/FS-Mod-ZIP und extrahiert die Metadaten

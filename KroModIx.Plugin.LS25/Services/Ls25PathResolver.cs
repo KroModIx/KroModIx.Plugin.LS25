@@ -1,8 +1,8 @@
 using System;
 using System.IO;
-using ModManager.PluginContracts;
+using KroModIx.Plugin.Contracts;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Findet für den <see cref="DetectedGame"/> den <c>mods/</c>-Ordner von LS25.

@@ -8,9 +8,9 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using ModManager.Plugins.LS25.Services;
+using KroModIx.Plugin.LS25.Services;
 
-namespace ModManager.Plugins.LS25.Views;
+namespace KroModIx.Plugin.LS25.Views;
 
 /// <summary>
 /// ModHub-Katalog-Tab im Kroste-Card-Look — nahe am standalone LS-ModManager.

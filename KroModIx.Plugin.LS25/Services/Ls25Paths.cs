@@ -1,7 +1,7 @@
 using System.IO;
-using ModManager.PluginContracts;
+using KroModIx.Plugin.Contracts;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Plugin-lokale Datei-Pfade — Ersatz für die globale <c>AppPaths</c>-Klasse aus

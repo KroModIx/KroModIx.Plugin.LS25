@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Erstellt und liest Backup-Archive der aktuellen Mod-Konfiguration.

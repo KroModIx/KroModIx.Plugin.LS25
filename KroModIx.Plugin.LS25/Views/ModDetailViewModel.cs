@@ -6,11 +6,11 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ModManager.PluginContracts;
-using ModManager.Plugins.LS25.Services;
+using KroModIx.Plugin.Contracts;
+using KroModIx.Plugin.LS25.Services;
 using NLog;
 
-namespace ModManager.Plugins.LS25.Views;
+namespace KroModIx.Plugin.LS25.Views;
 
 /// <summary>
 /// VM für den Detail-Dialog eines GIANTS-Mods. Lädt die Detail-Seite (Screenshots,
@@ -181,7 +181,7 @@ public sealed partial class ModDetailViewModel : ObservableObject
         if (!await _host.Ai.IsAvailableAsync())
         {
             _host.Notifications.Notify(
-                "KI-Provider nicht erreichbar — bitte in den ModManager-Einstellungen konfigurieren.",
+                "KI-Provider nicht erreichbar — bitte in den KroModIx-Einstellungen konfigurieren.",
                 NotificationLevel.Warning);
             return;
         }

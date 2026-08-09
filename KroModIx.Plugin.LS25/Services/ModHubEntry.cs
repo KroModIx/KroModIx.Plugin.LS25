@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>Ein Eintrag aus dem GIANTS-ModHub-Katalog.</summary>
 public sealed record ModHubEntry(

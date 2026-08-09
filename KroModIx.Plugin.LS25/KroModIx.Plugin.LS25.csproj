@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <RootNamespace>ModManager.Plugins.LS25</RootNamespace>
-    <AssemblyName>ModManager.Plugins.LS25</AssemblyName>
+    <RootNamespace>KroModIx.Plugin.LS25</RootNamespace>
+    <AssemblyName>KroModIx.Plugin.LS25</AssemblyName>
     <!-- Plugin-DLL braucht ihre transitiven Dependencies im Bundle
          (HtmlAgilityPack, Pfim, SkiaSharp inkl. native runtimes/).
          Ohne diese Property landen sie nicht in bin/. -->
@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <!-- ExcludeAssets=runtime: kommt vom Host mit, nicht im Plugin-Bundle. -->
-    <PackageReference Include="Kroste.ModManager.PluginContracts"
+    <PackageReference Include="KroModIx.Plugin.Contracts"
                       PrivateAssets="all" ExcludeAssets="runtime" />
     <PackageReference Include="Avalonia"
                       PrivateAssets="all" ExcludeAssets="runtime" />

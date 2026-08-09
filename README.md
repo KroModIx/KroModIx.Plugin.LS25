@@ -1,9 +1,9 @@
-# ModManager.Plugins.LS25
+# KroModIx.Plugin.LS25
 
-[![CI](https://github.com/Kroste/ModManager.Plugins.LS25/actions/workflows/ci.yml/badge.svg)](https://github.com/Kroste/ModManager.Plugins.LS25/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Kroste/ModManager.Plugins.LS25)](https://github.com/Kroste/ModManager.Plugins.LS25/releases)
+[![CI](https://github.com/Kroste/KroModIx.Plugin.LS25/actions/workflows/ci.yml/badge.svg)](https://github.com/Kroste/KroModIx.Plugin.LS25/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Kroste/KroModIx.Plugin.LS25)](https://github.com/Kroste/KroModIx.Plugin.LS25/releases)
 
-LS25-Mod-Manager als Plugin für den [Kroste ModManager](https://github.com/Kroste/Mod-Manager).
+LS25-Mod-Manager als Plugin für den [KroModIx](https://github.com/KroModIx/KroModIx).
 Extraktion des LS-ModManager-Kerns (List/Install/Enable/Disable/Uninstall) —
 Katalog-Anbindung an ModHub/Hof Hirschfeld/modhoster, KI-Zusammenfassungen und
 Backup/Restore folgen in späteren Versionen.
@@ -32,13 +32,13 @@ Fünf Tabs:
 
 ## Installation
 
-Aus dem [Release](https://github.com/Kroste/ModManager.Plugins.LS25/releases) das
+Aus dem [Release](https://github.com/Kroste/KroModIx.Plugin.LS25/releases) das
 ZIP entpacken nach:
 
-- **Windows:** `%APPDATA%\ModManager\plugins\ls25\`
-- **Linux:**   `~/.config/ModManager/plugins/ls25/`
+- **Windows:** `%APPDATA%\KroModIx\plugins\ls25\`
+- **Linux:**   `~/.config/KroModIx/plugins/ls25/`
 
-Beim nächsten App-Start erkennt der Host das Plugin, ab v0.4 des ModManagers
+Beim nächsten App-Start erkennt der Host das Plugin, ab v0.4 von KroModIx
 läuft die Installation live über die Sidebar-Karte („Plugin verfügbar → ⬇ Installieren").
 
 ## Entwicklung

@@ -1,6 +1,6 @@
 using System;
 
-namespace ModManager.Plugins.LS25.Services;
+namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>Ein im Mod-Ordner liegender LS25-Mod. FilePath endet auf `.zip`
 /// (aktiv) oder `.zip.disabled` (inaktiv, LS25 ignoriert die Datei).</summary>
