@@ -36,7 +36,7 @@ jobs:
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          dotnet nuget update source kroste-github \
+          dotnet nuget update source kromodix-github \
             --username github-actions \
             --password "${NUGET_AUTH_TOKEN}" \
             --store-password-in-clear-text
