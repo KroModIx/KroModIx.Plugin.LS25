@@ -152,6 +152,13 @@ public sealed partial class ModHubViewModel : ObservableObject
             await AddEntriesBatchedAsync(snapshot.Entries);
             var ageH = (int)(DateTime.UtcNow - snapshot.SavedUtc).TotalHours;
             Status = $"{Rows.Count} Mods aus Cache (Alter: {ageH} h).";
+
+            // Update-Badge auf der FS25-Kachel zurücksetzen: der User hat den
+            // Katalog jetzt gesehen. GameUpdateBadgeService fragt beim
+            // nächsten Tick den Notifier neu ab und findet dann 0 unseen
+            // Einträge → Badge weg. Ohne diesen Aufruf würde der Badge nur
+            // beim expliziten Full-Refresh zurückgesetzt (siehe Zeile 242).
+            _cache.SaveSeenSnapshot(snapshot.Entries.Select(e => e.DetailUrl), Language);
         }
 
         _ = LoadCategoriesAsync();
