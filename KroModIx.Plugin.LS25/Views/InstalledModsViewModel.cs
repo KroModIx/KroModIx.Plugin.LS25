@@ -485,6 +485,12 @@ public sealed partial class InstalledModsViewModel : ObservableObject
                 NotificationLevel.Success);
             _downloadBus.RaiseModInstalled(newMod.FileName);
             Refresh();
+
+            // Skill Kernprinzip 6b: Re-Check triggern damit der Sidebar-Kachel-
+            // Badge sofort sinkt (60-s-Host-Poll trifft dann auf den aktualisierten
+            // Tracker). Fire-and-forget — der Badge wird spätestens beim nächsten
+            // Poll aktualisiert.
+            _ = _updatesChecker.CheckAsync();
         }
         catch (Exception ex)
         {

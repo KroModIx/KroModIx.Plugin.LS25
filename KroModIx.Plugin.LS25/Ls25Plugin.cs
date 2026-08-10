@@ -77,11 +77,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
             host.Logger.Info("LS25 initialisiert: Mods-Ordner = {Path}", modsDir);
         }
 
-        // Auto-Check für installierte Mod-Updates im Hintergrund — Sidebar-
-        // Kachel-Badge sofort nach Plugin-Load sichtbar. 20 s Delay: nach LS25
-        // 30 s brauchts länger weil der Katalog beim ersten Start fetched wird
-        // (7000+ Einträge). Der Check nutzt den existierenden Cache und macht
-        // dann Detail-Fetches nur für Mods die den Fuzzy-Match überleben.
+        // Auto-Check bei Plugin-Init.
         _ = Task.Run(async () =>
         {
             await Task.Delay(TimeSpan.FromSeconds(20), ct);
@@ -91,6 +87,20 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
                 catch (Exception ex) { host.Logger.Debug(ex, "LS25 Auto-Update-Check fehlgeschlagen"); }
             }
         }, ct);
+
+        // Skill Kernprinzip 6b: nach jedem Install/Update Checker re-triggern
+        // damit Sidebar-Badge sinkt.
+        _downloadBus.ModInstalled += (_, _) =>
+        {
+            _ = Task.Run(async () =>
+            {
+                foreach (var checker in _updateCheckers.Values)
+                {
+                    try { await checker.CheckAsync(); }
+                    catch (Exception ex) { host.Logger.Debug(ex, "LS25 Post-Install-Check fehlgeschlagen"); }
+                }
+            });
+        };
 
         return Task.CompletedTask;
     }

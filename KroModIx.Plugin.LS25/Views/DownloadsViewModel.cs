@@ -179,7 +179,9 @@ public sealed partial class DownloadsViewModel : ObservableObject
         if (row is null) return;
         try
         {
-            var installed = _installer.Install(row.Source.FilePath, overwrite: false);
+            // overwrite=true damit Updates funktionieren (gleicher Filename wird
+            // ohne Frage überschrieben — analog Bulk-Install-Verhalten).
+            var installed = _installer.Install(row.Source.FilePath, overwrite: true);
             _host.Notifications.Notify($"Installiert: {installed.FileName}", NotificationLevel.Success);
             _downloadBus.RaiseModInstalled(installed.FileName);
             Refresh();
@@ -189,6 +191,45 @@ public sealed partial class DownloadsViewModel : ObservableObject
             _host.Logger.Warn(ex, "LS25 Install-from-download fehlgeschlagen");
             _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
         }
+    }
+
+    /// <summary>Bulk-Install aller Downloads. Skill Kernprinzip 6a — nach
+    /// einem Update-Batch will der User nicht 10× klicken. Fehler pro Row
+    /// werden geloggt, der Loop läuft trotzdem weiter (single-broken-Download
+    /// blockt nicht den Batch).</summary>
+    [RelayCommand]
+    private void InstallAll()
+    {
+        var rows = Rows.ToArray();
+        if (rows.Length == 0)
+        {
+            _host.Notifications.Notify("Keine Downloads zu installieren.", NotificationLevel.Info);
+            return;
+        }
+        using var scope = _host.BeginProgress($"Installiere {rows.Length} Downloads …");
+        int done = 0, failed = 0;
+        for (int i = 0; i < rows.Length; i++)
+        {
+            var row = rows[i];
+            scope.Report((double)i / rows.Length, $"Installiere {i + 1}/{rows.Length}: {row.Title}");
+            try
+            {
+                var installed = _installer.Install(row.Source.FilePath, overwrite: true);
+                _downloadBus.RaiseModInstalled(installed.FileName);
+                done++;
+            }
+            catch (Exception ex)
+            {
+                _host.Logger.Warn(ex, "LS25 Bulk-Install fehlgeschlagen für {File}", row.FileName);
+                failed++;
+            }
+        }
+        var msg = failed == 0
+            ? $"{done} Downloads installiert."
+            : $"{done} installiert, {failed} Fehler (siehe Log).";
+        _host.Notifications.Notify(msg,
+            failed == 0 ? NotificationLevel.Success : NotificationLevel.Warning);
+        Refresh();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]

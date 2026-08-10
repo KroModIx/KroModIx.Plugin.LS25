@@ -33,6 +33,12 @@ public sealed class DownloadsView : UserControl
 
     private static Control BuildToolbar()
     {
+        var installAllBtn = new Button { Name = "InstallAllButton", Content = "📥  Alle installieren" };
+        installAllBtn.Classes.Add("accent");
+        installAllBtn.Bind(Button.CommandProperty, new Binding(nameof(DownloadsViewModel.InstallAllCommand)));
+        ToolTip.SetTip(installAllBtn,
+            "Installiert alle Downloads (überschreibt bestehende Versionen). Ideal nach einem Update-Batch.");
+
         var refreshBtn = new Button { Content = "↺  Aktualisieren" };
         refreshBtn.Bind(Button.CommandProperty, new Binding(nameof(DownloadsViewModel.RefreshCommand)));
         var openBtn = new Button { Content = "📂  Downloads-Ordner" };
@@ -43,7 +49,7 @@ public sealed class DownloadsView : UserControl
             Orientation = Orientation.Horizontal,
             Spacing = 6,
             Margin = new Thickness(0, 0, 0, 10),
-            Children = { refreshBtn, openBtn },
+            Children = { installAllBtn, refreshBtn, openBtn },
         };
     }
 
