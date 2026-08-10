@@ -80,6 +80,13 @@ public sealed class DownloadsView : UserControl
         list.Bind(ListBox.SelectedItemProperty, new Binding(nameof(DownloadsViewModel.Selected))
         { Mode = BindingMode.TwoWay });
         list.ItemTemplate = new FuncDataTemplate<ModRow>((row, _) => row is null ? null : BuildRowTemplate(), supportsRecycling: true);
+        // Doppelklick öffnet Detail-Dialog (analog Icarus + Satisfactory).
+        // DataContext hängt am UserControl, wird an list vererbt.
+        list.DoubleTapped += (_, _) =>
+        {
+            if (list.DataContext is DownloadsViewModel vm && list.SelectedItem is ModRow row)
+                vm.ShowDetailCommand.Execute(row);
+        };
         return list;
     }
 
@@ -158,15 +165,26 @@ public sealed class DownloadsView : UserControl
             Converter = new JoinConverter(),
         });
 
+        // Beschreibungs-Zeile aus modDesc.xml (2 Zeilen max, nur bei HasDescription).
+        var descTb = new TextBlock
+        {
+            Margin = new Thickness(0, 4, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            MaxHeight = 40,
+        };
+        descTb.Classes.Add("secondary");
+        descTb.Bind(TextBlock.TextProperty, new Binding(nameof(ModRow.Description)));
+        descTb.Bind(TextBlock.IsVisibleProperty, new Binding(nameof(ModRow.HasDescription)));
+
         var textStack = new StackPanel
         {
             Spacing = 2,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(14, 0, 0, 0),
-            Children = { titleRow, meta },
+            Children = { titleRow, meta, descTb },
         };
 
-        // Row-Buttons rechts: Installieren (accent) + Löschen (danger)
+        // Row-Buttons rechts: Installieren (accent) + Details + Löschen (danger)
         var installBtn = new Button { Content = "📥  Installieren" };
         installBtn.Classes.Add("accent");
         installBtn.Bind(Button.CommandProperty, new Binding
@@ -175,6 +193,16 @@ public sealed class DownloadsView : UserControl
             Path = "DataContext." + nameof(DownloadsViewModel.InstallRowCommand),
         });
         installBtn.Bind(Button.CommandParameterProperty, new Binding("."));
+
+        var detailBtn = new Button { Content = "🔍  Details" };
+        detailBtn.Bind(Button.CommandProperty, new Binding
+        {
+            RelativeSource = new RelativeSource { Mode = RelativeSourceMode.FindAncestor, AncestorType = typeof(ListBox) },
+            Path = "DataContext." + nameof(DownloadsViewModel.ShowDetailCommand),
+        });
+        detailBtn.Bind(Button.CommandParameterProperty, new Binding("."));
+        ToolTip.SetTip(detailBtn,
+            "ModHub-Detail-Dialog öffnen (Fuzzy-Match auf Katalog — braucht geladenen ModHub-Katalog)");
 
         var deleteBtn = new Button { Content = "🗑  Löschen" };
         deleteBtn.Classes.Add("danger");
@@ -189,7 +217,7 @@ public sealed class DownloadsView : UserControl
         {
             Spacing = 6,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { installBtn, deleteBtn },
+            Children = { installBtn, detailBtn, deleteBtn },
         };
 
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };

@@ -85,7 +85,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
         yield return new InstalledTab(installer, backup, _previews, _hub, _cache, _paths, _downloadBus, _host);
         yield return new ModHubTab(_hub, _hofHirschfeld, _modhoster, _cache, installer,
             _previews, _settings, _downloadBus, _host);
-        yield return new DownloadsTab(installer, _previews, _downloadBus, _host);
+        yield return new DownloadsTab(installer, _previews, _hub, _cache, _downloadBus, _host);
     }
 
     public Task ShutdownAsync()
@@ -178,17 +178,22 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
     {
         private readonly ModInstallService _installer;
         private readonly ModPreviewService _previews;
+        private readonly ModHubService _hub;
+        private readonly CatalogCache _cache;
         private readonly DownloadEventBus _downloadBus;
         private readonly IHostServices _host;
         public DownloadsTab(ModInstallService installer, ModPreviewService previews,
+            ModHubService hub, CatalogCache cache,
             DownloadEventBus downloadBus, IHostServices host)
-        { _installer = installer; _previews = previews; _downloadBus = downloadBus; _host = host; }
+        { _installer = installer; _previews = previews; _hub = hub; _cache = cache;
+          _downloadBus = downloadBus; _host = host; }
         public string Id => "downloads";
         public string Label => "Downloads";
         public string Icon => "\U0001F4E5"; // 📥
         public int Order => 20;
         public bool IsVisible(DetectedGame game) => true;
         public Control CreateView(DetectedGame game, IHostServices host) =>
-            new DownloadsView { DataContext = new DownloadsViewModel(_installer, _previews, _downloadBus, _host) };
+            new DownloadsView { DataContext = new DownloadsViewModel(
+                _installer, _previews, _hub, _cache, _downloadBus, _host) };
     }
 }

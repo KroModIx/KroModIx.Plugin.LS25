@@ -647,6 +647,8 @@ public sealed partial class ModRow : ObservableObject
     public string Title => Source.Metadata?.Title ?? Source.FileName;
     public string Author => Source.Metadata?.Author ?? "";
     public string Version => Source.Metadata?.Version ?? "";
+    public string Description => Source.Metadata?.Description ?? "";
+    public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
     public string Size => FormatBytes(Source.FileSizeBytes);
     public bool IsEnabled => Source.IsEnabled;
     public string StateLabel => Source.IsEnabled ? "aktiv" : "inaktiv";

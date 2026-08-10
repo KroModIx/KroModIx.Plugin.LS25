@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,22 +17,33 @@ namespace KroModIx.Plugin.LS25.Views;
 /// <summary>
 /// Downloads-Tab-VM. Zeigt bereits heruntergeladene ZIPs mit Preview aus dem
 /// ZIP (analog Installiert-Tab, via <see cref="ModPreviewService"/>). Row-
-/// basierte Commands (InstallRow, DeleteRow) für Klick auf Kachel-Button
-/// ohne vorherige Selection. IsInstalled-Flag per Filename-Fuzzy-Match gegen
-/// die installierten Mods → grünes „✓ INSTALLIERT"-Badge.
+/// basierte Commands (InstallRow, DeleteRow, ShowDetail). IsInstalled-Flag
+/// per Filename-Fuzzy-Match gegen die installierten Mods → grünes „✓ INSTALLIERT"-Badge.
+///
+/// <para>Detail-Dialog aus dem Downloads-Tab: analog InstalledModsViewModel.ShowDetail
+/// mit Fuzzy-Match auf Katalog-Cache → wenn erfolgreich, öffnet ModDetailWindow
+/// mit Screenshots + KI-Zusammenfassung + Download-Button. Braucht den
+/// ModHub-Katalog-Cache — bei leerem Cache: Info-Toast.</para>
 /// </summary>
 public sealed partial class DownloadsViewModel : ObservableObject
 {
+    private const string Language = "de";
+
     private readonly ModInstallService _installer;
     private readonly ModPreviewService _previews;
+    private readonly ModHubService _hub;
+    private readonly CatalogCache _cache;
     private readonly DownloadEventBus _downloadBus;
     private readonly IHostServices _host;
 
     public DownloadsViewModel(ModInstallService installer, ModPreviewService previews,
+        ModHubService hub, CatalogCache cache,
         DownloadEventBus downloadBus, IHostServices host)
     {
         _installer = installer;
         _previews = previews;
+        _hub = hub;
+        _cache = cache;
         _downloadBus = downloadBus;
         _host = host;
         DownloadsDir = installer.DownloadsDir ?? "(nicht konfiguriert)";
@@ -205,4 +217,79 @@ public sealed partial class DownloadsViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenDownloadsFolder() => _host.Shell.OpenDirectory(DownloadsDir);
+
+    /// <summary>Öffnet ModDetailWindow für die Row via Fuzzy-Match auf den
+    /// ModHub-Katalog. Braucht einen geladenen Katalog-Cache (User war schon
+    /// mal im ModHub-Tab). Ohne Katalog-Cache oder ohne Match → Info-Toast.
+    /// Analog InstalledModsViewModel.ShowDetail v1.8.0.</summary>
+    [RelayCommand]
+    private void ShowDetail(ModRow? row)
+    {
+        if (row is null) return;
+        var snapshot = _cache.Load(Language);
+        if (snapshot is null || snapshot.Entries.Count == 0)
+        {
+            _host.Notifications.Notify(
+                "Kein Katalog-Cache vorhanden. Erst ModHub-Tab öffnen, damit der Katalog geladen wird.",
+                NotificationLevel.Warning);
+            return;
+        }
+        var entry = LookupCatalogEntry(snapshot.Entries, row.FileName);
+        if (entry is null)
+        {
+            _host.Notifications.Notify(
+                $"Kein Katalog-Eintrag für „{row.Title}\" gefunden (Fuzzy-Match hat nicht gegriffen).",
+                NotificationLevel.Info);
+            return;
+        }
+        var modId = ExtractModIdFromUrl(entry.DetailUrl);
+        if (modId is null)
+        {
+            _host.Notifications.Notify(
+                $"Katalog-Eintrag hat keine mod_id: {entry.DetailUrl}",
+                NotificationLevel.Warning);
+            return;
+        }
+        var catalogRow = new CatalogRow(entry);
+        var vm = new ModDetailViewModel(modId.Value, catalogRow, _hub, _previews, _downloadBus, _host);
+        var window = new ModDetailWindow { DataContext = vm };
+        var owner = (Avalonia.Application.Current?.ApplicationLifetime
+            as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (owner is not null) window.Show(owner); else window.Show();
+    }
+
+    /// <summary>Fuzzy-Match Filename → CatalogEntry (analog LS-ModManager +
+    /// InstalledModsViewModel). Kopie damit DownloadsViewModel unabhängig
+    /// bleibt.</summary>
+    private static ModHubEntry? LookupCatalogEntry(IReadOnlyList<ModHubEntry> catalog, string zipFileName)
+    {
+        var normalized = NormalizeForMatch(Path.GetFileNameWithoutExtension(zipFileName));
+        if (normalized.Length < 3) return null;
+        foreach (var e in catalog)
+        {
+            var titleNorm = NormalizeForMatch(e.Title);
+            if (titleNorm.Length < 3) continue;
+            if (normalized.Contains(titleNorm) || titleNorm.Contains(normalized))
+                return e;
+        }
+        return null;
+    }
+
+    private static string NormalizeForMatch(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s)
+            if (char.IsLetterOrDigit(c)) sb.Append(char.ToLowerInvariant(c));
+        var result = sb.ToString();
+        foreach (var prefix in new[] { "fs25", "fs22", "ls25", "ls22" })
+            if (result.StartsWith(prefix)) result = result.Substring(prefix.Length);
+        if (result.EndsWith("disabled")) result = result.Substring(0, result.Length - "disabled".Length);
+        return result;
+    }
+
+    private static int? ExtractModIdFromUrl(string url)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(url, @"mod_id=(\d+)");
+        return m.Success && int.TryParse(m.Groups[1].Value, out var id) ? id : null;
+    }
 }
