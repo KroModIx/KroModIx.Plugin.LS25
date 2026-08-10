@@ -55,8 +55,15 @@ public sealed class InstalledModsView : UserControl
     private static Control BuildToolbar()
     {
         // MOD-UPDATES + Bulk-Aktionen für ausgewählte Rows.
-        var updatesBtn = new Button { Content = "🔄  Updates prüfen" };
+        var updatesBtn = new Button { Name = "CheckUpdatesButton", Content = "🔄  Updates prüfen" };
         updatesBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.CheckUpdatesCommand)));
+
+        var updateAllBtn = new Button { Name = "UpdateAllButton", Content = "⬆  Alle updaten" };
+        updateAllBtn.Classes.Add("accent");
+        updateAllBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.UpdateAllCommand)));
+        updateAllBtn.Bind(Button.IsEnabledProperty, new Binding(nameof(InstalledModsViewModel.HasAnyUpdate)));
+        ToolTip.SetTip(updateAllBtn,
+            "Installiert alle Updates sequenziell. Erst 'Updates pruefen' klicken damit was zu tun ist.");
 
         var installBtn = new Button { Content = "📁  ZIP installieren…" };
         installBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.InstallFromFileCommand)));
@@ -89,6 +96,7 @@ public sealed class InstalledModsView : UserControl
             Margin = new Thickness(0, 0, 0, 10),
         };
         toolbar.Children.Add(updatesBtn);
+        toolbar.Children.Add(updateAllBtn);
         toolbar.Children.Add(NewDivider());
         toolbar.Children.Add(installBtn);
         toolbar.Children.Add(refreshBtn);

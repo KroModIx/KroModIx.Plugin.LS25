@@ -434,7 +434,49 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         finally
         {
             IsCheckingUpdates = false;
+            OnPropertyChanged(nameof(HasAnyUpdate));
         }
+    }
+
+    /// <summary>Mindestens eine Row mit ModHub-Update? Steuert den „⬆ Alle
+    /// updaten"-Button.</summary>
+    public bool HasAnyUpdate => _allMods.Any(r => r.HasUpdate);
+
+    /// <summary>Bulk-Update aller Rows mit HasUpdate — sequenziell (GIANTS-
+    /// Rate-Limit sicherheitshalber). Skill Kernprinzip 6c.</summary>
+    [RelayCommand]
+    private async Task UpdateAllAsync()
+    {
+        var candidates = _allMods.Where(r => r.HasUpdate).ToList();
+        if (candidates.Count == 0)
+        {
+            _host.Notifications.Notify(
+                "Keine offenen Updates. Erst 🔄 Updates prüfen klicken.",
+                NotificationLevel.Info);
+            return;
+        }
+        using var scope = _host.BeginProgress($"{candidates.Count} LS25-Updates …");
+        int done = 0, failed = 0;
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            var row = candidates[i];
+            scope.Report((double)i / candidates.Count,
+                $"Update {i + 1}/{candidates.Count}: {row.Title}");
+            try
+            {
+                await UpdateModAsync(row);
+                done++;
+            }
+            catch (Exception ex)
+            {
+                _host.Logger.Warn(ex, "Bulk-Update fehlgeschlagen für {Mod}", row.Title);
+                failed++;
+            }
+        }
+        _host.Notifications.Notify(
+            failed == 0 ? $"{done} Mod-Update(s) installiert." : $"{done} installiert, {failed} Fehler.",
+            failed == 0 ? NotificationLevel.Success : NotificationLevel.Warning);
+        OnPropertyChanged(nameof(HasAnyUpdate));
     }
 
     /// <summary>Führt das Update aus: lädt neue Version, deinstalliert die alte,
