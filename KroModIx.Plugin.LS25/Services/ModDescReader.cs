@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -15,13 +16,66 @@ namespace KroModIx.Plugin.LS25.Services;
 /// es keine gibt, dekodieren wir die DDS via <see cref="DdsToPngConverter"/>
 /// zu PNG. So bekommen praktisch alle LS25-Mods eine echte Preview statt
 /// nur den 🚜-Emoji-Fallback.
+///
+/// <para>Cache: die Ergebnisse werden pro (Path, Mtime, Size) in einem
+/// <see cref="ConcurrentDictionary{TKey, TValue}"/> mit <see cref="Lazy{T}"/>
+/// gecacht. Grund: beim App-Start rufen <c>InstalledModsViewModel</c>,
+/// <c>DownloadsViewModel</c> und <c>ModHubViewModel.ApplyFilter</c> jeweils
+/// <c>ListInstalled()</c> auf — das würde sonst dieselbe ZIP dreimal öffnen
+/// (bei 60 Mods = 180 ZIP-Reads + DDS-Decodes). Mit Cache: 60 Reads total,
+/// die anderen zwei Aufrufe treffen instant. Lazy&lt;T&gt; verhindert
+/// Doppelt-Reads wenn alle 3 VMs den Refresh parallel starten.</para>
 /// </summary>
 public sealed class ModDescReader
 {
     private static readonly Logger Log = LogManager.GetCurrentClassLogger();
     private static readonly string[] LanguagePreference = ["de", "en"];
 
+    private readonly ConcurrentDictionary<string, Lazy<CacheEntry>> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed record CacheEntry(long MtimeTicks, long Size, ModReadResult Result);
+
     public ModReadResult Read(string zipPath)
+    {
+        FileInfo info;
+        try { info = new FileInfo(zipPath); }
+        catch (Exception ex)
+        {
+            Log.Warn(ex, "FileInfo fehlgeschlagen: {Path}", zipPath);
+            return new ModReadResult(null, null, ex.Message);
+        }
+        if (!info.Exists)
+            return new ModReadResult(null, null, "Datei nicht gefunden");
+
+        var mtime = info.LastWriteTimeUtc.Ticks;
+        var size = info.Length;
+
+        // GetOrAdd + Lazy: bei paralleler Anfrage auf denselben Path führt nur
+        // der erste Thread den ZIP-Read aus; alle anderen warten auf Lazy.Value
+        // und bekommen dann das gleiche Ergebnis. Kein Locking nötig.
+        var lazy = _cache.GetOrAdd(zipPath, _ => new Lazy<CacheEntry>(
+            () => new CacheEntry(mtime, size, ReadFromDisk(zipPath)),
+            LazyThreadSafetyMode.ExecutionAndPublication));
+
+        var entry = lazy.Value;
+        if (entry.MtimeTicks == mtime && entry.Size == size)
+            return entry.Result;
+
+        // Datei wurde seit dem Cache-Insert geändert (User hat re-installiert
+        // oder der Downloads-Ordner hat eine neuere Version). Fresh-Read.
+        var fresh = new Lazy<CacheEntry>(
+            () => new CacheEntry(mtime, size, ReadFromDisk(zipPath)),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        _cache[zipPath] = fresh;
+        return fresh.Value.Result;
+    }
+
+    /// <summary>Entfernt eine Datei aus dem Cache — vom <c>ModInstallService</c>
+    /// bei Uninstall/Rename aufgerufen, damit stale Einträge nicht ewig im
+    /// Speicher bleiben.</summary>
+    public void InvalidateCache(string zipPath) => _cache.TryRemove(zipPath, out _);
+
+    private static ModReadResult ReadFromDisk(string zipPath)
     {
         try
         {

@@ -66,36 +66,57 @@ public sealed partial class DownloadsViewModel : ObservableObject
 
     partial void OnSelectedChanged(ModRow? value) => OnPropertyChanged(nameof(HasSelection));
 
+    /// <summary>Sync-Wrapper der die eigentliche Arbeit off-thread startet.
+    /// <see cref="ModInstallService.ListDownloaded"/> und
+    /// <see cref="ModInstallService.ListInstalled"/> öffnen intern jede ZIP
+    /// für Metadata + DDS-Preview-Read — bei 60+ ZIPs sind das 30+ s sync
+    /// auf UI-Thread. Deshalb Task.Run wie beim InstalledModsViewModel.</summary>
     [RelayCommand]
     private void Refresh()
     {
-        Rows.Clear();
-        try
+        Summary = "Downloads werden gelesen …";
+        _ = Task.Run(async () =>
         {
-            var downloaded = _installer.ListDownloaded()
-                .OrderByDescending(m => m.InstalledUtc).ToList();
-            var installedNames = new HashSet<string>(
-                _installer.ListInstalled().Select(m => Normalize(m.FileName)),
-                StringComparer.OrdinalIgnoreCase);
-
-            foreach (var m in downloaded)
+            List<InstalledMod>? downloaded = null;
+            HashSet<string>? installedNames = null;
+            string? error = null;
+            try
             {
-                var row = new ModRow(m);
-                row.IsAlreadyInstalled = installedNames.Contains(Normalize(m.FileName));
-                Rows.Add(row);
+                downloaded = _installer.ListDownloaded()
+                    .OrderByDescending(m => m.InstalledUtc).ToList();
+                installedNames = new HashSet<string>(
+                    _installer.ListInstalled().Select(m => Normalize(m.FileName)),
+                    StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                _host.Logger.Warn(ex, "LS25 Downloads-Liste konnte nicht geladen werden");
             }
 
-            var totalBytes = Rows.Sum(r => r.Source.FileSizeBytes);
-            Summary = Rows.Count == 0
-                ? "Keine heruntergeladenen Mods."
-                : $"{Rows.Count} ZIPs · {totalBytes / 1024.0 / 1024.0:F1} MB gesamt";
-        }
-        catch (Exception ex)
-        {
-            _host.Logger.Warn(ex, "LS25 Downloads-Liste konnte nicht geladen werden");
-            Summary = "Fehler beim Lesen des Downloads-Ordners.";
-        }
-        _ = LoadPreviewsAsync(Rows.ToArray());
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Rows.Clear();
+                if (downloaded is not null && installedNames is not null)
+                {
+                    foreach (var m in downloaded)
+                    {
+                        var row = new ModRow(m);
+                        row.IsAlreadyInstalled = installedNames.Contains(Normalize(m.FileName));
+                        Rows.Add(row);
+                    }
+                    var totalBytes = Rows.Sum(r => r.Source.FileSizeBytes);
+                    Summary = Rows.Count == 0
+                        ? "Keine heruntergeladenen Mods."
+                        : $"{Rows.Count} ZIPs · {totalBytes / 1024.0 / 1024.0:F1} MB gesamt";
+                }
+                else
+                {
+                    Summary = $"Fehler beim Lesen des Downloads-Ordners: {error}";
+                }
+                _ = LoadPreviewsAsync(Rows.ToArray());
+            });
+        });
     }
 
     private async Task LoadPreviewsAsync(ModRow[] rows)
