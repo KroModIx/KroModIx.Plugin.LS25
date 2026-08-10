@@ -38,9 +38,11 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
     private ModPreviewService? _previews;
     private DownloadEventBus? _downloadBus;
     private ModHubUpdateChecker? _updateChecker;
+    private InstalledUpdatesTracker? _installedUpdatesTracker;
     private IReadOnlyList<DetectedGame> _activatedGames = Array.Empty<DetectedGame>();
     private readonly Dictionary<string, ModInstallService> _installers = new();
     private readonly Dictionary<string, ModBackupService> _backups = new();
+    private readonly Dictionary<string, InstalledUpdatesChecker> _updateCheckers = new();
     private readonly ModDescReader _reader = new();
     private readonly Ls25PathResolver _pathResolver = new();
 
@@ -56,6 +58,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
         _previews = new ModPreviewService(_paths, _reader, host.CreateHttpClient("previews"));
         _downloadBus = new DownloadEventBus();
         _updateChecker = new ModHubUpdateChecker(_cache);
+        _installedUpdatesTracker = new InstalledUpdatesTracker(_paths);
         _activatedGames = activatedGames;
 
         foreach (var game in activatedGames)
@@ -69,8 +72,26 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
             var installer = new ModInstallService(modsDir, _reader, _paths);
             _installers[game.Target.GameId] = installer;
             _backups[game.Target.GameId] = new ModBackupService(installer);
+            _updateCheckers[game.Target.GameId] = new InstalledUpdatesChecker(
+                installer, _hub, _cache, _installedUpdatesTracker);
             host.Logger.Info("LS25 initialisiert: Mods-Ordner = {Path}", modsDir);
         }
+
+        // Auto-Check für installierte Mod-Updates im Hintergrund — Sidebar-
+        // Kachel-Badge sofort nach Plugin-Load sichtbar. 20 s Delay: nach LS25
+        // 30 s brauchts länger weil der Katalog beim ersten Start fetched wird
+        // (7000+ Einträge). Der Check nutzt den existierenden Cache und macht
+        // dann Detail-Fetches nur für Mods die den Fuzzy-Match überleben.
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(20), ct);
+            foreach (var checker in _updateCheckers.Values)
+            {
+                try { await checker.CheckAsync(ct: ct); }
+                catch (Exception ex) { host.Logger.Debug(ex, "LS25 Auto-Update-Check fehlgeschlagen"); }
+            }
+        }, ct);
+
         return Task.CompletedTask;
     }
 
@@ -79,10 +100,11 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
         if (!_installers.TryGetValue(game.Target.GameId, out var installer) || _host is null
             || _hub is null || _cache is null || _hofHirschfeld is null || _modhoster is null
             || _paths is null || _settings is null || _previews is null || _downloadBus is null
-            || !_backups.TryGetValue(game.Target.GameId, out var backup))
+            || !_backups.TryGetValue(game.Target.GameId, out var backup)
+            || !_updateCheckers.TryGetValue(game.Target.GameId, out var updatesChecker))
             yield break;
 
-        yield return new InstalledTab(installer, backup, _previews, _hub, _cache, _paths, _downloadBus, _host);
+        yield return new InstalledTab(installer, backup, _previews, _hub, _cache, _paths, _downloadBus, _host, updatesChecker);
         yield return new ModHubTab(_hub, _hofHirschfeld, _modhoster, _cache, installer,
             _previews, _settings, _downloadBus, _host);
         yield return new DownloadsTab(installer, _previews, _hub, _cache, _downloadBus, _host);
@@ -107,20 +129,27 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
     /// wird kein Badge, weil der Host bei count=0 nichts zeigt).</summary>
     public Task<IReadOnlyList<GameUpdateInfo>> GetPendingUpdatesAsync(CancellationToken cancellationToken)
     {
-        if (_updateChecker is null || _activatedGames.Count == 0)
+        if (_updateChecker is null || _installedUpdatesTracker is null || _activatedGames.Count == 0)
             return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(Array.Empty<GameUpdateInfo>());
 
-        // ModHub-Sprache ist plugin-intern hart auf "de" (siehe ModHubViewModel).
-        // Sobald das konfigurierbar wird, hier aus Ls25Settings holen.
         const string language = "de";
-        var count = _updateChecker.CountUnseen(language);
-        if (count <= 0)
+        var catalogCount = _updateChecker.CountUnseen(language);
+        var installedCount = _installedUpdatesTracker.PendingCount;
+        var totalCount = catalogCount + installedCount;
+        if (totalCount <= 0)
             return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(Array.Empty<GameUpdateInfo>());
 
-        var summary = $"{count} neue Mods im ModHub-Katalog seit deinem letzten Besuch";
+        var parts = new List<string>(2);
+        if (installedCount > 0)
+            parts.Add(_installedUpdatesTracker.Summary is { Length: > 0 } s
+                ? s
+                : $"{installedCount} Mod-Update(s) verfügbar");
+        if (catalogCount > 0)
+            parts.Add($"{catalogCount} neue ModHub-Katalog-Einträge");
+        var summary = string.Join(" · ", parts);
         var result = _activatedGames
             .Where(g => g.Target.SteamAppId is int)
-            .Select(g => new GameUpdateInfo(g.Target.SteamAppId!.Value, count, summary))
+            .Select(g => new GameUpdateInfo(g.Target.SteamAppId!.Value, totalCount, summary))
             .ToList();
         return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(result);
     }
@@ -135,17 +164,19 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
         private readonly Ls25Paths _paths;
         private readonly DownloadEventBus _downloadBus;
         private readonly IHostServices _host;
+        private readonly InstalledUpdatesChecker _updatesChecker;
         public InstalledTab(ModInstallService installer, ModBackupService backup,
             ModPreviewService previews, ModHubService hub, CatalogCache cache,
-            Ls25Paths paths, DownloadEventBus downloadBus, IHostServices host)
-        { _installer = installer; _backup = backup; _previews = previews; _hub = hub; _cache = cache; _paths = paths; _downloadBus = downloadBus; _host = host; }
+            Ls25Paths paths, DownloadEventBus downloadBus, IHostServices host,
+            InstalledUpdatesChecker updatesChecker)
+        { _installer = installer; _backup = backup; _previews = previews; _hub = hub; _cache = cache; _paths = paths; _downloadBus = downloadBus; _host = host; _updatesChecker = updatesChecker; }
         public string Id => "installed";
         public string Label => "Installiert";
         public string Icon => "\U0001F69C";
         public int Order => 0;
         public bool IsVisible(DetectedGame game) => true;
         public Control CreateView(DetectedGame game, IHostServices host) =>
-            new InstalledModsView { DataContext = new InstalledModsViewModel(_installer, _backup, _previews, _hub, _cache, _paths, _downloadBus, _host) };
+            new InstalledModsView { DataContext = new InstalledModsViewModel(_installer, _backup, _previews, _hub, _cache, _paths, _downloadBus, _host, _updatesChecker) };
     }
 
     private sealed class ModHubTab : IGameTabContribution

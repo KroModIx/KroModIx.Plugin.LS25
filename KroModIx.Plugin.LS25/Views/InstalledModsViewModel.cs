@@ -26,10 +26,12 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     private readonly Ls25Paths _paths;
     private readonly DownloadEventBus _downloadBus;
     private readonly IHostServices _host;
+    private readonly InstalledUpdatesChecker _updatesChecker;
 
     public InstalledModsViewModel(ModInstallService installer, ModBackupService backup,
         ModPreviewService previews, ModHubService hub, CatalogCache cache,
-        Ls25Paths paths, DownloadEventBus downloadBus, IHostServices host)
+        Ls25Paths paths, DownloadEventBus downloadBus, IHostServices host,
+        InstalledUpdatesChecker updatesChecker)
     {
         _installer = installer;
         _backup = backup;
@@ -39,6 +41,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         _paths = paths;
         _downloadBus = downloadBus;
         _host = host;
+        _updatesChecker = updatesChecker;
         ModsDir = installer.ModsDir;
         InitEvents();
         RefreshCommand.Execute(null);
@@ -390,9 +393,9 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         }
     }
 
-    /// <summary>Prüft für jeden installierten Mod, ob im Katalog eine neuere
-    /// Version steht. Fuzzy-Match Filename ↔ Katalog-Titel. Läuft nicht
-    /// automatisch — User klickt „Updates prüfen".</summary>
+    /// <summary>Delegiert an <see cref="InstalledUpdatesChecker"/>. Der schreibt
+    /// nach dem Run in den <see cref="InstalledUpdatesTracker"/> — Sidebar-
+    /// Kachel-Badge wird beim nächsten Poll aktualisiert.</summary>
     [RelayCommand]
     private async Task CheckUpdatesAsync()
     {
@@ -409,42 +412,19 @@ public sealed partial class InstalledModsViewModel : ObservableObject
                 return;
             }
 
-            var mods = Mods.ToList();
-            int checkedCount = 0, updatedCount = 0;
-            foreach (var row in mods)
-            {
-                var installedVersion = row.Version;
-                if (string.IsNullOrWhiteSpace(installedVersion)) continue;
-
-                var catalogEntry = LookupCatalogEntry(snapshot.Entries, row.FileName);
-                if (catalogEntry is null) continue;
-                var modId = ExtractModIdFromUrl(catalogEntry.DetailUrl);
-                if (modId is null) continue;
-
-                checkedCount++;
-                Summary = $"Prüfe Updates: {checkedCount} · {row.Title}";
-                try
+            var updated = await _updatesChecker.CheckAsync(
+                onUpdateFound: (fileName, oldVer, newVer) =>
                 {
-                    var detail = await _hub.FetchModDetailAsync(modId.Value, Language);
-                    if (detail is null || string.IsNullOrWhiteSpace(detail.Version)) continue;
-                    if (IsVersionNewer(detail.Version, installedVersion))
-                    {
-                        row.SetUpdateAvailable(detail.Version);
-                        updatedCount++;
-                        _host.Logger.Info("LS25: Update verfügbar {Title}: {Old} → {New}",
-                            row.Title, installedVersion, detail.Version);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _host.Logger.Debug(ex, "Update-Check für {Title} fehlgeschlagen", row.Title);
-                }
-            }
-            Summary = updatedCount > 0
-                ? $"Updates gefunden: {updatedCount} von {checkedCount} geprüften Mods."
-                : $"Keine Updates. {checkedCount} Mods geprüft.";
+                    var row = Mods.FirstOrDefault(r => r.FileName == fileName);
+                    if (row is not null)
+                        Dispatcher.UIThread.Post(() => row.SetUpdateAvailable(newVer));
+                },
+                onProgress: msg => Summary = msg);
+            Summary = updated > 0
+                ? $"Updates gefunden: {updated} Mod(s)."
+                : "Keine Updates.";
             _host.Notifications.Notify(Summary,
-                updatedCount > 0 ? NotificationLevel.Success : NotificationLevel.Info);
+                updated > 0 ? NotificationLevel.Success : NotificationLevel.Info);
         }
         catch (Exception ex)
         {
