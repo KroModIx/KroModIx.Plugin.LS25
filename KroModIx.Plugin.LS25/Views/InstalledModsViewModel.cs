@@ -104,32 +104,50 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         return this;
     }
 
+    /// <summary>Sync-Wrapper der die eigentliche Arbeit off-thread startet.
+    /// <see cref="ModInstallService.ListInstalled"/> öffnet jede Mod-ZIP für
+    /// den Metadata- + DDS-Preview-Read — bei 60+ Mods sind das schnell mal
+    /// 30 s Blockade wenn man das auf dem UI-Thread laufen lässt (Startup-
+    /// Freeze). Deshalb: ListInstalled in Task.Run, Ergebnis-Materialisierung
+    /// in Mods+Summary zurück auf UI-Thread (weil Bindings PropertyChanged
+    /// nur vom UI-Thread aus feuern dürfen).</summary>
     [RelayCommand]
     private void Refresh()
     {
-        _allMods.Clear();
-        try
+        Summary = "Mod-Liste wird gelesen …";
+        _ = Task.Run(async () =>
         {
-            foreach (var m in _installer.ListInstalled()
-                         .OrderByDescending(m => m.IsEnabled)
-                         .ThenBy(m => m.Metadata?.Title ?? m.FileName, StringComparer.CurrentCultureIgnoreCase))
-                _allMods.Add(new ModRow(m));
+            List<InstalledMod>? mods = null;
+            string? error = null;
+            try { mods = _installer.ListInstalled().ToList(); }
+            catch (Exception ex) { error = ex.Message; _host.Logger.Warn(ex, "LS25: Mod-Liste konnte nicht geladen werden"); }
 
-            var enabled = _allMods.Count(r => r.Source.IsEnabled);
-            var total = _allMods.Count;
-            var totalBytes = _allMods.Where(r => r.Source.IsEnabled).Sum(r => r.Source.FileSizeBytes);
-            Summary = total == 0
-                ? "Keine Mods im Mods-Ordner."
-                : $"{enabled} aktiv / {total} total · {FormatBytes(totalBytes)}";
-        }
-        catch (Exception ex)
-        {
-            _host.Logger.Warn(ex, "LS25: Mod-Liste konnte nicht geladen werden");
-            Summary = "Fehler beim Lesen des Mods-Ordners.";
-        }
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _allMods.Clear();
+                if (mods is not null)
+                {
+                    foreach (var m in mods
+                                 .OrderByDescending(m => m.IsEnabled)
+                                 .ThenBy(m => m.Metadata?.Title ?? m.FileName, StringComparer.CurrentCultureIgnoreCase))
+                        _allMods.Add(new ModRow(m));
 
-        ApplyFilter();
-        _ = LoadPreviewsAsync(_allMods.ToArray());
+                    var enabled = _allMods.Count(r => r.Source.IsEnabled);
+                    var total = _allMods.Count;
+                    var totalBytes = _allMods.Where(r => r.Source.IsEnabled).Sum(r => r.Source.FileSizeBytes);
+                    Summary = total == 0
+                        ? "Keine Mods im Mods-Ordner."
+                        : $"{enabled} aktiv / {total} total · {FormatBytes(totalBytes)}";
+                }
+                else
+                {
+                    Summary = $"Fehler beim Lesen des Mods-Ordners: {error}";
+                }
+
+                ApplyFilter();
+                _ = LoadPreviewsAsync(_allMods.ToArray());
+            });
+        });
     }
 
     /// <summary>Filtert <see cref="_allMods"/> nach <see cref="SearchText"/>
@@ -161,18 +179,24 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             {
                 var path = await _previews.GetOrExtractInstalledPreviewAsync(row.Source.FilePath);
                 if (path is null || !File.Exists(path)) continue;
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                // Bitmap OFF-UI-Thread dekodieren (Skia auf Linux liest den
+                // Stream ohne GL-Kontext). Nur die Property-Zuweisung MUSS auf
+                // UI-Thread (weil der PropertyChanged-Event dort feuern muss).
+                Bitmap? bmp = null;
+                try
                 {
-                    try
+                    bmp = await Task.Run(() =>
                     {
                         using var s = File.OpenRead(path);
-                        row.Preview = new Bitmap(s);
-                    }
-                    catch (Exception ex)
-                    {
-                        _host.Logger.Debug(ex, "Preview-Bitmap-Load fehlgeschlagen: {p}", path);
-                    }
-                });
+                        return new Bitmap(s);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _host.Logger.Debug(ex, "Preview-Bitmap-Decode fehlgeschlagen: {p}", path);
+                    continue;
+                }
+                await Dispatcher.UIThread.InvokeAsync(() => row.Preview = bmp);
             }
             catch (Exception ex)
             {

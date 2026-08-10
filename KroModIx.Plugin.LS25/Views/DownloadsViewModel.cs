@@ -106,15 +106,21 @@ public sealed partial class DownloadsViewModel : ObservableObject
             {
                 var path = await _previews.GetOrExtractInstalledPreviewAsync(row.Source.FilePath);
                 if (path is null || !File.Exists(path)) continue;
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                Bitmap? bmp = null;
+                try
                 {
-                    try
+                    bmp = await Task.Run(() =>
                     {
                         using var s = File.OpenRead(path);
-                        row.Preview = new Bitmap(s);
-                    }
-                    catch (Exception ex) { _host.Logger.Warn(ex, "Downloads-Preview-Bitmap {p}", path); }
-                });
+                        return new Bitmap(s);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _host.Logger.Warn(ex, "Downloads-Preview-Bitmap-Decode {p}", path);
+                    continue;
+                }
+                await Dispatcher.UIThread.InvokeAsync(() => row.Preview = bmp);
             }
             catch (Exception ex) { _host.Logger.Debug(ex, "Downloads-Preview-Extract {p}", row.Source.FilePath); }
         }
