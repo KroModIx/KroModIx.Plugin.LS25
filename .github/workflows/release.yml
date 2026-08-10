@@ -60,6 +60,15 @@ jobs:
           mkdir -p bundle
           cp -r KroModIx.Plugin.LS25/bin/Release/net10.0/. bundle/
           find bundle -type f \( -name '*.pdb' -o -name '*.xml' -o -name '*.deps.json' \) -delete
+          # WICHTIG: die plugin.json im Source-Repo enthält eine hart codierte
+          # "version"-Zeile. Beim Release-Tag durch die Tag-Version ersetzen,
+          # sonst hat der PluginUpdateService eine Endlosschleife
+          # („Update verfügbar" → Install → beim nächsten Check wieder verfügbar).
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            sed -i -E 's/("version"\s*:\s*)"[^"]+"/\1"'"${{ steps.ver.outputs.v }}"'"/' bundle/plugin.json
+            echo "== gepatchte plugin.json =="
+            grep '"version"' bundle/plugin.json
+          fi
           cd bundle
           zip -r "../KroModIx.Plugin.LS25-${{ steps.ver.outputs.v }}.zip" .
 
