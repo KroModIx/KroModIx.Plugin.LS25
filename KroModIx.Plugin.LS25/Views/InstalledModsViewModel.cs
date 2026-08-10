@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -302,6 +303,47 @@ public sealed partial class InstalledModsViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenModsFolder() => _host.Shell.OpenDirectory(ModsDir);
+
+    /// <summary>Öffnet den GIANTS-Detail-Dialog für die installierte Row.
+    /// Voraussetzung: Katalog-Cache ist vorhanden (User war schon mal im
+    /// ModHub-Tab) UND der Fuzzy-Filename-Match findet einen Katalog-Eintrag.
+    /// Sonst Info-Toast statt lautlos zu failen.</summary>
+    [RelayCommand]
+    private void ShowDetail(ModRow? row)
+    {
+        if (row is null) return;
+        var snapshot = _cache.Load(Language);
+        if (snapshot is null || snapshot.Entries.Count == 0)
+        {
+            _host.Notifications.Notify(
+                "Kein Katalog-Cache vorhanden. Erst ModHub-Tab öffnen, damit der Katalog geladen wird.",
+                NotificationLevel.Warning);
+            return;
+        }
+        var entry = LookupCatalogEntry(snapshot.Entries, row.FileName);
+        if (entry is null)
+        {
+            _host.Notifications.Notify(
+                $"Kein Katalog-Eintrag für „{row.Title}\" gefunden (Fuzzy-Match hat nicht gegriffen).",
+                NotificationLevel.Info);
+            return;
+        }
+        var modId = ExtractModIdFromUrl(entry.DetailUrl);
+        if (modId is null)
+        {
+            _host.Notifications.Notify(
+                $"Katalog-Eintrag hat keine mod_id: {entry.DetailUrl}",
+                NotificationLevel.Warning);
+            return;
+        }
+
+        var catalogRow = new CatalogRow(entry);
+        var vm = new ModDetailViewModel(modId.Value, catalogRow, _hub, _previews, _downloadBus, _host);
+        var window = new ModDetailWindow { DataContext = vm };
+        var owner = (Avalonia.Application.Current?.ApplicationLifetime
+            as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        if (owner is not null) window.Show(owner); else window.Show();
+    }
 
     /// <summary>Wird vom Drag&amp;Drop-Handler in der View aufgerufen — pro
     /// gedropter .zip-Datei einmal. Fehler landen im Log + Notify; die View

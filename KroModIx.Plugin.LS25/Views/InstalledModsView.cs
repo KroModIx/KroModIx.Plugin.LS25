@@ -189,6 +189,12 @@ public sealed class InstalledModsView : UserControl
         };
 
         list.ItemTemplate = new FuncDataTemplate<ModRow>((row, _) => row is null ? null : BuildRowTemplate(), supportsRecycling: true);
+        // Doppelklick auf Row öffnet Detail-Dialog (analog Icarus-Plugin).
+        list.DoubleTapped += (_, _) =>
+        {
+            if (DataContext is InstalledModsViewModel vm && list.SelectedItem is ModRow row)
+                vm.ShowDetailCommand.Execute(row);
+        };
         return list;
     }
 
@@ -295,6 +301,11 @@ public sealed class InstalledModsView : UserControl
         BindRowCommand(updateBtn, nameof(InstalledModsViewModel.UpdateModCommand));
         updateBtn.Bind(Button.IsVisibleProperty, new Binding(nameof(ModRow.HasUpdate)));
 
+        var detailBtn = new Button { Content = "🔍  Details" };
+        BindRowCommand(detailBtn, nameof(InstalledModsViewModel.ShowDetailCommand));
+        ToolTip.SetTip(detailBtn,
+            "GIANTS-Detail-Dialog öffnen (Fuzzy-Match Filename → Katalog — Katalog muss vorher via ModHub-Tab geladen sein)");
+
         var toggleBtn = new Button { Content = "⏻  (De-)Aktivieren" };
         BindRowCommand(toggleBtn, nameof(InstalledModsViewModel.ToggleEnabledRowCommand));
 
@@ -306,7 +317,7 @@ public sealed class InstalledModsView : UserControl
         {
             Spacing = 6,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { updateBtn, toggleBtn, uninstallBtn },
+            Children = { updateBtn, detailBtn, toggleBtn, uninstallBtn },
         };
 
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
@@ -329,12 +340,15 @@ public sealed class InstalledModsView : UserControl
         var ctxMenu = new ContextMenu();
         var miToggle = new MenuItem { Header = "⏻  (De-)Aktivieren" };
         BindRowCommand(miToggle, nameof(InstalledModsViewModel.ToggleEnabledRowCommand));
+        var miDetail = new MenuItem { Header = "🔍  Details" };
+        BindRowCommand(miDetail, nameof(InstalledModsViewModel.ShowDetailCommand));
         var miUninstall = new MenuItem { Header = "🗑  Deinstallieren" };
         BindRowCommand(miUninstall, nameof(InstalledModsViewModel.UninstallRowCommand));
         var miUpdate = new MenuItem { Header = "⬆  Update" };
         BindRowCommand(miUpdate, nameof(InstalledModsViewModel.UpdateModCommand));
         miUpdate.Bind(MenuItem.IsVisibleProperty, new Binding(nameof(ModRow.HasUpdate)));
         ctxMenu.Items.Add(miUpdate);
+        ctxMenu.Items.Add(miDetail);
         ctxMenu.Items.Add(miToggle);
         ctxMenu.Items.Add(new Separator());
         ctxMenu.Items.Add(miUninstall);
