@@ -1,45 +1,73 @@
 # KroModIx.Plugin.LS25
 
-[![CI](https://github.com/Kroste/KroModIx.Plugin.LS25/actions/workflows/ci.yml/badge.svg)](https://github.com/Kroste/KroModIx.Plugin.LS25/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Kroste/KroModIx.Plugin.LS25)](https://github.com/Kroste/KroModIx.Plugin.LS25/releases)
+[![CI](https://github.com/KroModIx/KroModIx.Plugin.LS25/actions/workflows/ci.yml/badge.svg)](https://github.com/KroModIx/KroModIx.Plugin.LS25/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/KroModIx/KroModIx.Plugin.LS25)](https://github.com/KroModIx/KroModIx.Plugin.LS25/releases)
 
-LS25-Mod-Manager als Plugin für den [KroModIx](https://github.com/KroModIx/KroModIx).
-Extraktion des LS-ModManager-Kerns (List/Install/Enable/Disable/Uninstall) —
-Katalog-Anbindung an ModHub/Hof Hirschfeld/modhoster, KI-Zusammenfassungen und
-Backup/Restore folgen in späteren Versionen.
+**Landwirtschafts-Simulator 25** als Plugin für den
+[KroModIx](https://github.com/KroModIx/KroModIx). Aggregierter Katalog
+über GIANTS ModHub + Hof Hirschfeld + modhoster, Preview-Bilder aus dem
+Mod-ZIP, Update-Discovery für installierte Mods, KI-Zusammenfassung im
+Detail-Dialog, Backup/Restore.
 
 ## Ziel-Spiel
 
-- **Farming Simulator 25** (Steam App-ID 2300320)
-  - Windows: `Documents\My Games\FarmingSimulator2025\mods\`
-  - Linux (Proton): `<Proton-Präfix>/drive_c/users/steamuser/My Documents/My Games/FarmingSimulator2025/mods/`
+**Farming Simulator 25** — Steam AppId 2300320.
 
-## Aktueller Umfang (v0.4.0)
+- Windows: `Documents\My Games\FarmingSimulator2025\mods\`
+- Linux (Proton): `<Proton-Prefix>/drive_c/users/steamuser/My Documents/My Games/FarmingSimulator2025/mods/`
 
-Fünf Tabs:
+## Features (v1.12.0)
 
-- **Installiert**: Mods im Mods-Ordner listen, Aktiv/Inaktiv toggeln, ZIP
-  installieren, deinstallieren, Ordner öffnen.
-- **ModHub**: GIANTS-Katalog scrapen, Suche, Kategorien-Filter, Direct-Download.
-- **Hof Hirschfeld**: Community-Umbauten aus hof-hirschfeld.de. Detail im Browser
-  (Consent-Overlay auf der Site erlaubt keinen Direct-Download).
-- **modhoster** *(neu in v0.4)*: modhoster.de über offiziellen JSON-Endpunkt.
-  Paginierung, Titel/Autor/Kategorie-Filter. Detail im Browser
-  (Login-Pflicht + robots.txt sperrt Download-Endpunkte).
-- **Downloads**: heruntergeladene ZIPs listen, installieren oder löschen.
-- v0.5 — Backup/Restore, KI-Zusammenfassungen (via IHostServices AI-Provider)
-- v0.6 — Preview-Bilder (DDS → PNG via DdsToPngConverter)
+### Installiert-Tab
+- Alle Mods im Mods-Ordner mit Cover-Preview (aus modDesc.xml via
+  DDS→PNG-Konvertierung), Autor, Version, Größe, Beschreibung
+- Enable/Disable per Klick (rename → `.zip.disabled`)
+- **Multi-Select** mit Bulk-Aktivieren/Deaktivieren/Deinstallieren
+- **🔄 Updates prüfen** — vergleicht installierte Versionen mit dem
+  ModHub-Katalog (Fuzzy-Match Filename → Titel)
+- **⬆ Alle updaten** — installiert alle gefundenen Updates sequenziell
+- **🔍 Details** per Doppelklick oder Button — öffnet GIANTS-Detail-Dialog
+  mit Screenshots + KI-Zusammenfassung
+- Drag&Drop von .zip-Files installiert direkt
+- Backup + Restore aller Mods als ZIP mit Enabled-State-Manifest
+
+### ModHub-Tab (Katalog)
+- GIANTS-ModHub aggregiert mit Hof Hirschfeld und modhoster
+- Suche, Kategorien, „nur neu"-Toggle
+- Doppelklick öffnet Detail-Dialog mit Screenshots + Beschreibung + KI
+
+### Downloads-Tab
+- Alle heruntergeladenen .zip-Files mit Cover + Beschreibung
+- **📥 Alle installieren** — Bulk-Install-Button
+- Pro Row: Installieren + 🔍 Details + Löschen
+- Auto-Refresh via FileSystemWatcher
+
+### Einstellungen
+- Katalog-Sprache, Katalog-Refresh-Intervall
+- KI-Provider wird zentral im Host konfiguriert (`_host.Ai`)
+
+### IUpdateNotifier
+Grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Katalog-Einträgen
+UND bei verfügbaren Updates für deine installierten Mods (Auto-Check
+läuft 20 s nach Plugin-Load im Hintergrund).
 
 ## Installation
 
-Aus dem [Release](https://github.com/Kroste/KroModIx.Plugin.LS25/releases) das
-ZIP entpacken nach:
+Aus dem [Release](https://github.com/KroModIx/KroModIx.Plugin.LS25/releases)
+das ZIP entpacken nach:
 
-- **Windows:** `%APPDATA%\KroModIx\plugins\ls25\`
-- **Linux:**   `~/.config/KroModIx/plugins/ls25/`
+- **Windows:** `%APPDATA%\KroModIx\plugins\kroste.ls25\`
+- **Linux:**   `~/.config/KroModIx/plugins/kroste.ls25/`
 
-Beim nächsten App-Start erkennt der Host das Plugin, ab v0.4 von KroModIx
-läuft die Installation live über die Sidebar-Karte („Plugin verfügbar → ⬇ Installieren").
+Alternativ: 1-Klick-Install über die Install-Karte in der KroModIx-Sidebar.
+
+## Kataloge
+
+| Quelle | Format | Direct-Download | Notes |
+|---|---|---|---|
+| GIANTS ModHub | HTML-Scraping | ✅ | Rate-Limit-schonend, Cache 24h |
+| Hof Hirschfeld | HTML-Scraping | ❌ (Consent-Overlay) | Detail-Link im Browser |
+| modhoster | Public JSON | ❌ (Login-Pflicht) | Detail-Link im Browser |
 
 ## Entwicklung
 
@@ -47,12 +75,19 @@ läuft die Installation live über die Sidebar-Karte („Plugin verfügbar → �
 dotnet build
 ```
 
-Braucht Zugriff auf das Kroste-GitHub-Packages-Feed:
+Braucht Zugriff auf das KroModIx-GitHub-Packages-Feed für
+`KroModIx.Plugin.Contracts`:
 
-- Im CI: `secrets.GITHUB_TOKEN` reicht (siehe `.github/workflows/ci.yml`).
-- Lokal: `gh auth refresh -s read:packages` und danach
-  `dotnet nuget update source kroste-github --username kroste --password $(gh auth token) --store-password-in-clear-text`.
+- CI: `secrets.GITHUB_TOKEN` reicht
+- Lokal: `gh auth refresh -s read:packages` + `nuget.config` mit
+  `packageSourceMapping` (siehe Repo)
+
+Release: Tag `vX.Y.Z` setzen + pushen → GitHub-Action baut Bundle-ZIP.
 
 ## Lizenz
 
 MIT — siehe [LICENSE](LICENSE).
+
+---
+
+☕ [buymeacoffee.com/kroste](https://buymeacoffee.com/kroste)
