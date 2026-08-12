@@ -328,6 +328,59 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         }
     }
 
+    /// <summary>v1.9+: Bulk-Import — User waehlt einen Ordner, alle .zip darin
+    /// werden sequenziell installiert (Rate-Limits vermeiden + Download-Progress
+    /// lesbar halten). Fehler pro ZIP werden geloggt aber der Batch laeuft weiter.
+    /// Progress-Scope zeigt im Host-Statusbar 'Installiere 3/12: …'.</summary>
+    [RelayCommand]
+    private async Task InstallFromFolderAsync()
+    {
+        var dir = await _host.Dialogs.PickFolderAsync("Ordner mit LS25-ZIPs waehlen");
+        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
+
+        var zips = Directory.EnumerateFiles(dir, "*.zip", SearchOption.TopDirectoryOnly)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (zips.Count == 0)
+        {
+            _host.Notifications.Notify("Keine .zip-Dateien im Ordner gefunden.",
+                NotificationLevel.Warning);
+            return;
+        }
+
+        var confirm = await _host.Dialogs.ConfirmAsync(
+            "Bulk-Import",
+            $"{zips.Count} ZIP-Datei(en) werden nacheinander in den Mods-Ordner installiert. Fortfahren?",
+            okLabel: "Installieren", cancelLabel: "Abbrechen");
+        if (!confirm) return;
+
+        using var scope = _host.BeginProgress($"Bulk-Import: {zips.Count} Mods");
+        int done = 0, failed = 0;
+        var lastInstalledFile = "";
+        foreach (var zip in zips)
+        {
+            var name = Path.GetFileName(zip);
+            scope.Report((double)(done + failed) / zips.Count,
+                $"{done + failed + 1}/{zips.Count}: {name}");
+            try
+            {
+                var installed = _installer.Install(zip, overwrite: false);
+                lastInstalledFile = installed.FileName;
+                done++;
+                _downloadBus.RaiseModInstalled(installed.FileName);
+            }
+            catch (Exception ex)
+            {
+                _host.Logger.Warn(ex, "LS25: Bulk-Install failed for {Zip}", zip);
+                failed++;
+            }
+        }
+        _host.Notifications.Notify(
+            $"Bulk-Import: {done} installiert, {failed} Fehler.",
+            failed == 0 ? NotificationLevel.Success : NotificationLevel.Warning);
+        Refresh();
+    }
+
     [RelayCommand]
     private void OpenModsFolder() => _host.Shell.OpenDirectory(ModsDir);
 

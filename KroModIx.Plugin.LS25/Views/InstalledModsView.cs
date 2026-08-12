@@ -67,6 +67,12 @@ public sealed class InstalledModsView : UserControl
 
         var installBtn = new Button { Content = "📁  ZIP installieren…" };
         installBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.InstallFromFileCommand)));
+        // v1.9+: Bulk-Import — ganzen Ordner voller ZIPs auf einmal
+        var bulkImportBtn = new Button { Content = "📂  Ordner importieren…" };
+        bulkImportBtn.Bind(Button.CommandProperty,
+            new Binding(nameof(InstalledModsViewModel.InstallFromFolderCommand)));
+        ToolTip.SetTip(bulkImportBtn,
+            "Waehlt einen Ordner (z.B. Downloads/LS25) — alle .zip darin werden nacheinander installiert.");
         var refreshBtn = new Button { Content = "↺  Aktualisieren" };
         refreshBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.RefreshCommand)));
 
@@ -99,6 +105,7 @@ public sealed class InstalledModsView : UserControl
         toolbar.Children.Add(updateAllBtn);
         toolbar.Children.Add(NewDivider());
         toolbar.Children.Add(installBtn);
+        toolbar.Children.Add(bulkImportBtn);
         toolbar.Children.Add(refreshBtn);
         toolbar.Children.Add(toggleBulkBtn);
         toolbar.Children.Add(uninstallBulkBtn);
