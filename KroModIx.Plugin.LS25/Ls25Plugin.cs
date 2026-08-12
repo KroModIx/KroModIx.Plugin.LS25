@@ -15,7 +15,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
     public PluginMetadata Metadata { get; } = new(
         Id: "kroste.ls25",
         DisplayName: "Landwirtschafts-Simulator 25",
-        Version: "1.7.0",
+        Version: "1.13.1",
         Author: "Kroste",
         Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung, grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Einträgen (IUpdateNotifier).");
 
@@ -131,35 +131,26 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
 
     // ---- IUpdateNotifier (Contracts v1.7.0) ----
 
-    /// <summary>Zählt neue ModHub-Einträge seit dem letzten Katalog-Tab-Besuch
-    /// pro aktiviertem Zielspiel. Baseline via Seen-Snapshot in
-    /// <see cref="CatalogCache.SaveSeenSnapshot"/> — der wird beim Öffnen des
-    /// ModHub-Tabs geschrieben und beim „Neuer Snapshot" gepatcht. Bis der
-    /// User den Tab einmal besucht hat, gibt es keinen Badge (0 → gerendert
-    /// wird kein Badge, weil der Host bei count=0 nichts zeigt).</summary>
+    /// <summary>Meldet nur echte Mod-Updates fuer INSTALLIERTE Mods
+    /// (aus <see cref="InstalledUpdatesTracker"/>). Neue ModHub-Katalog-
+    /// Eintraege zaehlen bewusst NICHT als Badge — der gruene ↑-Pfeil ist
+    /// ein Actionable-Signal ("du solltest was updaten"), nicht ein
+    /// Community-News-Signal.</summary>
     public Task<IReadOnlyList<GameUpdateInfo>> GetPendingUpdatesAsync(CancellationToken cancellationToken)
     {
-        if (_updateChecker is null || _installedUpdatesTracker is null || _activatedGames.Count == 0)
+        if (_installedUpdatesTracker is null || _activatedGames.Count == 0)
             return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(Array.Empty<GameUpdateInfo>());
 
-        const string language = "de";
-        var catalogCount = _updateChecker.CountUnseen(language);
         var installedCount = _installedUpdatesTracker.PendingCount;
-        var totalCount = catalogCount + installedCount;
-        if (totalCount <= 0)
+        if (installedCount <= 0)
             return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(Array.Empty<GameUpdateInfo>());
 
-        var parts = new List<string>(2);
-        if (installedCount > 0)
-            parts.Add(_installedUpdatesTracker.Summary is { Length: > 0 } s
-                ? s
-                : $"{installedCount} Mod-Update(s) verfügbar");
-        if (catalogCount > 0)
-            parts.Add($"{catalogCount} neue ModHub-Katalog-Einträge");
-        var summary = string.Join(" · ", parts);
+        var summary = _installedUpdatesTracker.Summary is { Length: > 0 } s
+            ? s
+            : $"{installedCount} Mod-Update(s) verfügbar";
         var result = _activatedGames
             .Where(g => g.Target.SteamAppId is int)
-            .Select(g => new GameUpdateInfo(g.Target.SteamAppId!.Value, totalCount, summary))
+            .Select(g => new GameUpdateInfo(g.Target.SteamAppId!.Value, installedCount, summary))
             .ToList();
         return Task.FromResult<IReadOnlyList<GameUpdateInfo>>(result);
     }
