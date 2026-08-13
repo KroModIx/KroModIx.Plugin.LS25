@@ -6,6 +6,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using KroModIx.Plugin.LS25.Services;
 
 namespace KroModIx.Plugin.LS25.Views;
 
@@ -110,10 +111,10 @@ public sealed class ModDetailWindow : Window
         var progress = new ProgressBar { IsIndeterminate = true, Width = 120, Margin = new Thickness(12, 0, 0, 0) };
         progress.Bind(ProgressBar.IsVisibleProperty, new Binding(nameof(ModDetailViewModel.IsLoading)));
 
-        var openBtn = new Button { Content = "🌐  Detail im Browser", Margin = new Thickness(8, 0, 0, 0) };
+        var openBtn = new Button { Content = Strings.T("btn.detail_browser"), Margin = new Thickness(8, 0, 0, 0) };
         openBtn.Bind(Button.CommandProperty, new Binding(nameof(ModDetailViewModel.OpenInBrowserCommand)));
 
-        var downloadBtn = new Button { Content = "⬇  Download", Margin = new Thickness(8, 0, 0, 0) };
+        var downloadBtn = new Button { Content = Strings.T("btn.detail_download"), Margin = new Thickness(8, 0, 0, 0) };
         downloadBtn.Classes.Add("accent");
         downloadBtn.Bind(Button.CommandProperty, new Binding(nameof(ModDetailViewModel.DownloadCommand)));
 
@@ -221,7 +222,7 @@ public sealed class ModDetailWindow : Window
     private static Border BuildAiToolbar()
     {
         var stack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        var btn = new Button { Content = "🤖  Zusammenfassen (Ollama)" };
+        var btn = new Button { Content = Strings.T("btn.detail_summarize") };
         btn.Bind(Button.CommandProperty, new Binding(nameof(ModDetailViewModel.SummarizeCommand)));
         var busy = new ProgressBar
         {
@@ -237,7 +238,7 @@ public sealed class ModDetailWindow : Window
     {
         var label = new TextBlock
         {
-            Text = "Screenshots", FontWeight = FontWeight.SemiBold, Opacity = 0.9,
+            Text = Strings.T("detail.section.screenshots"), FontWeight = FontWeight.SemiBold, Opacity = 0.9,
             Margin = new Thickness(0, 0, 0, 4),
         };
 
@@ -283,7 +284,7 @@ public sealed class ModDetailWindow : Window
     {
         var label = new TextBlock
         {
-            Text = "Beschreibung", FontWeight = FontWeight.SemiBold, Opacity = 0.9,
+            Text = Strings.T("detail.section.description"), FontWeight = FontWeight.SemiBold, Opacity = 0.9,
             Margin = new Thickness(0, 0, 0, 4),
         };
         var desc = new TextBox
@@ -304,7 +305,7 @@ public sealed class ModDetailWindow : Window
     {
         var label = new TextBlock
         {
-            Text = "🤖 KI-Zusammenfassung",
+            Text = Strings.T("detail.section.ai_summary"),
             FontWeight = FontWeight.SemiBold,
             Foreground = new SolidColorBrush(Color.FromRgb(0xE0, 0xB1, 0x4C)),
             Margin = new Thickness(0, 0, 0, 4),

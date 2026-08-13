@@ -76,7 +76,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     public bool HasSelection => Selected is not null;
     public bool HasMultiSelection => SelectedRows.Count > 1;
     public string SelectedCountLabel =>
-        SelectedRows.Count > 1 ? $"{SelectedRows.Count} ausgewählt" : "";
+        SelectedRows.Count > 1 ? string.Format(Strings.T("label.selected_count"), SelectedRows.Count) : "";
 
     [ObservableProperty]
     private bool _isCheckingUpdates;
@@ -117,7 +117,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     [RelayCommand]
     private void Refresh()
     {
-        Summary = "Mod-Liste wird gelesen …";
+        Summary = Strings.T("status.reading_mods");
         _ = Task.Run(async () =>
         {
             List<InstalledMod>? mods = null;
@@ -139,12 +139,12 @@ public sealed partial class InstalledModsViewModel : ObservableObject
                     var total = _allMods.Count;
                     var totalBytes = _allMods.Where(r => r.Source.IsEnabled).Sum(r => r.Source.FileSizeBytes);
                     Summary = total == 0
-                        ? "Keine Mods im Mods-Ordner."
-                        : $"{enabled} aktiv / {total} total · {FormatBytes(totalBytes)}";
+                        ? Strings.T("status.no_mods")
+                        : string.Format(Strings.T("status.mods_summary"), enabled, total, FormatBytes(totalBytes));
                 }
                 else
                 {
-                    Summary = $"Fehler beim Lesen des Mods-Ordners: {error}";
+                    Summary = string.Format(Strings.T("status.mods_read_error"), error);
                 }
 
                 ApplyFilter();
@@ -219,14 +219,14 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         {
             var updated = _installer.SetEnabled(row.Source, !row.Source.IsEnabled);
             _host.Notifications.Notify(
-                $"Mod {(updated.IsEnabled ? "aktiviert" : "deaktiviert")}: {updated.FileName}",
+                string.Format(Strings.T(updated.IsEnabled ? "notify.mod_enabled" : "notify.mod_disabled"), updated.FileName),
                 NotificationLevel.Success);
             Refresh();
         }
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25: Toggle fehlgeschlagen");
-            _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.error_prefix"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -255,7 +255,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             catch (Exception ex) { _host.Logger.Warn(ex, "Bulk-Toggle für {F}", r.FileName); }
         }
         _host.Notifications.Notify(
-            $"{done} Mod(s) {(target ? "aktiviert" : "deaktiviert")}.",
+            string.Format(Strings.T(target ? "notify.bulk_toggle_enabled" : "notify.bulk_toggle_disabled"), done),
             NotificationLevel.Success);
         Refresh();
     }
@@ -267,12 +267,12 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     {
         if (SelectedRows.Count == 0) return;
         var rows = SelectedRows.ToList();
+        var list = string.Join("\n", rows.Take(10).Select(r => "• " + r.FileName));
+        var more = rows.Count > 10 ? string.Format(Strings.T("dialog.uninstall_bulk_more"), rows.Count - 10) : "";
         bool ok = await _host.Dialogs.ConfirmAsync(
-            "Mods deinstallieren",
-            $"{rows.Count} Mod(s) wirklich löschen?\n\n" +
-            string.Join("\n", rows.Take(10).Select(r => "• " + r.FileName)) +
-            (rows.Count > 10 ? $"\n… und {rows.Count - 10} weitere" : ""),
-            okLabel: "Löschen", cancelLabel: "Abbrechen");
+            Strings.T("dialog.uninstall_bulk_title"),
+            string.Format(Strings.T("dialog.uninstall_bulk_msg"), rows.Count, list + more),
+            okLabel: Strings.T("dialog.btn_delete"), cancelLabel: Strings.T("dialog.btn_cancel"));
         if (!ok) return;
 
         int done = 0;
@@ -281,7 +281,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             try { _installer.Uninstall(r.Source); done++; }
             catch (Exception ex) { _host.Logger.Warn(ex, "Bulk-Uninstall für {F}", r.FileName); }
         }
-        _host.Notifications.Notify($"{done} Mod(s) deinstalliert.", NotificationLevel.Success);
+        _host.Notifications.Notify(string.Format(Strings.T("notify.bulk_uninstalled"), done), NotificationLevel.Success);
         Refresh();
     }
 
@@ -290,20 +290,20 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     {
         if (row is null) return;
         bool ok = await _host.Dialogs.ConfirmAsync(
-            "Mod deinstallieren",
-            $"„{row.Source.FileName}“ wirklich löschen?",
-            okLabel: "Löschen", cancelLabel: "Abbrechen");
+            Strings.T("dialog.uninstall_single_title"),
+            string.Format(Strings.T("dialog.uninstall_single_msg"), row.Source.FileName),
+            okLabel: Strings.T("dialog.btn_delete"), cancelLabel: Strings.T("dialog.btn_cancel"));
         if (!ok) return;
         try
         {
             _installer.Uninstall(row.Source);
-            _host.Notifications.Notify($"Deinstalliert: {row.Source.FileName}", NotificationLevel.Success);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.uninstalled_prefix"), row.Source.FileName), NotificationLevel.Success);
             Refresh();
         }
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25: Uninstall fehlgeschlagen");
-            _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.error_prefix"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -311,20 +311,20 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     private async Task InstallFromFileAsync()
     {
         var picked = await _host.Dialogs.PickFileAsync(
-            "Mod-ZIP wählen",
-            ("LS25-Mod (.zip)", new[] { "*.zip" }));
+            Strings.T("dialog.pick_zip_title"),
+            (Strings.T("dialog.pick_zip_filter"), new[] { "*.zip" }));
         if (picked is null) return;
         try
         {
             var installed = _installer.Install(picked, overwrite: false);
-            _host.Notifications.Notify($"Installiert: {installed.FileName}", NotificationLevel.Success);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.installed_prefix"), installed.FileName), NotificationLevel.Success);
             _downloadBus.RaiseModInstalled(installed.FileName);
             Refresh();
         }
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25: Install fehlgeschlagen");
-            _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.error_prefix"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -335,7 +335,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     [RelayCommand]
     private async Task InstallFromFolderAsync()
     {
-        var dir = await _host.Dialogs.PickFolderAsync("Ordner mit LS25-ZIPs waehlen");
+        var dir = await _host.Dialogs.PickFolderAsync(Strings.T("dialog.pick_folder_title"));
         if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return;
 
         var zips = Directory.EnumerateFiles(dir, "*.zip", SearchOption.TopDirectoryOnly)
@@ -343,25 +343,25 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             .ToList();
         if (zips.Count == 0)
         {
-            _host.Notifications.Notify("Keine .zip-Dateien im Ordner gefunden.",
+            _host.Notifications.Notify(Strings.T("notify.no_zips_in_folder"),
                 NotificationLevel.Warning);
             return;
         }
 
         var confirm = await _host.Dialogs.ConfirmAsync(
-            "Bulk-Import",
-            $"{zips.Count} ZIP-Datei(en) werden nacheinander in den Mods-Ordner installiert. Fortfahren?",
-            okLabel: "Installieren", cancelLabel: "Abbrechen");
+            Strings.T("dialog.bulk_import_title"),
+            string.Format(Strings.T("dialog.bulk_import_msg"), zips.Count),
+            okLabel: Strings.T("dialog.btn_install"), cancelLabel: Strings.T("dialog.btn_cancel"));
         if (!confirm) return;
 
-        using var scope = _host.BeginProgress($"Bulk-Import: {zips.Count} Mods");
+        using var scope = _host.BeginProgress(string.Format(Strings.T("progress.bulk_import"), zips.Count));
         int done = 0, failed = 0;
         var lastInstalledFile = "";
         foreach (var zip in zips)
         {
             var name = Path.GetFileName(zip);
             scope.Report((double)(done + failed) / zips.Count,
-                $"{done + failed + 1}/{zips.Count}: {name}");
+                string.Format(Strings.T("progress.bulk_import_row"), done + failed + 1, zips.Count, name));
             try
             {
                 var installed = _installer.Install(zip, overwrite: false);
@@ -376,7 +376,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             }
         }
         _host.Notifications.Notify(
-            $"Bulk-Import: {done} installiert, {failed} Fehler.",
+            string.Format(Strings.T("notify.bulk_import_result"), done, failed),
             failed == 0 ? NotificationLevel.Success : NotificationLevel.Warning);
         Refresh();
     }
@@ -396,7 +396,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         if (snapshot is null || snapshot.Entries.Count == 0)
         {
             _host.Notifications.Notify(
-                "Kein Katalog-Cache vorhanden. Erst ModHub-Tab öffnen, damit der Katalog geladen wird.",
+                Strings.T("notify.no_catalog_cache"),
                 NotificationLevel.Warning);
             return;
         }
@@ -404,7 +404,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         if (entry is null)
         {
             _host.Notifications.Notify(
-                $"Kein Katalog-Eintrag für „{row.Title}\" gefunden (Fuzzy-Match hat nicht gegriffen).",
+                string.Format(Strings.T("notify.no_catalog_match"), row.Title),
                 NotificationLevel.Info);
             return;
         }
@@ -412,7 +412,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         if (modId is null)
         {
             _host.Notifications.Notify(
-                $"Katalog-Eintrag hat keine mod_id: {entry.DetailUrl}",
+                string.Format(Strings.T("notify.no_mod_id"), entry.DetailUrl),
                 NotificationLevel.Warning);
             return;
         }
@@ -433,7 +433,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         try
         {
             var installed = _installer.Install(zipPath, overwrite: false);
-            _host.Notifications.Notify($"Installiert (Drop): {installed.FileName}",
+            _host.Notifications.Notify(string.Format(Strings.T("notify.installed_drop_prefix"), installed.FileName),
                 NotificationLevel.Success);
             _downloadBus.RaiseModInstalled(installed.FileName);
         }
@@ -441,7 +441,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         {
             _host.Logger.Warn(ex, "LS25: Drop-Install fehlgeschlagen für {P}", zipPath);
             _host.Notifications.Notify(
-                $"Drop-Install fehlgeschlagen ({System.IO.Path.GetFileName(zipPath)}): {ex.Message}",
+                string.Format(Strings.T("notify.drop_install_failed"), System.IO.Path.GetFileName(zipPath), ex.Message),
                 NotificationLevel.Error);
         }
     }
@@ -460,7 +460,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             if (snapshot is null || snapshot.Entries.Count == 0)
             {
                 _host.Notifications.Notify(
-                    "Kein Katalog-Cache vorhanden. Erst ModHub-Tab öffnen, damit der Katalog geladen wird.",
+                    Strings.T("notify.no_catalog_cache"),
                     NotificationLevel.Warning);
                 return;
             }
@@ -474,15 +474,15 @@ public sealed partial class InstalledModsViewModel : ObservableObject
                 },
                 onProgress: msg => Summary = msg);
             Summary = updated > 0
-                ? $"Updates gefunden: {updated} Mod(s)."
-                : "Keine Updates.";
+                ? string.Format(Strings.T("notify.updates_found"), updated)
+                : Strings.T("notify.no_updates");
             _host.Notifications.Notify(Summary,
                 updated > 0 ? NotificationLevel.Success : NotificationLevel.Info);
         }
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25: Update-Prüfung fehlgeschlagen");
-            _host.Notifications.Notify($"Update-Prüfung: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.update_check_error"), ex.Message), NotificationLevel.Error);
         }
         finally
         {
@@ -504,17 +504,17 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         if (candidates.Count == 0)
         {
             _host.Notifications.Notify(
-                "Keine offenen Updates. Erst 🔄 Updates prüfen klicken.",
+                Strings.T("notify.no_pending_updates"),
                 NotificationLevel.Info);
             return;
         }
-        using var scope = _host.BeginProgress($"{candidates.Count} LS25-Updates …");
+        using var scope = _host.BeginProgress(string.Format(Strings.T("progress.updates_running"), candidates.Count));
         int done = 0, failed = 0;
         for (int i = 0; i < candidates.Count; i++)
         {
             var row = candidates[i];
             scope.Report((double)i / candidates.Count,
-                $"Update {i + 1}/{candidates.Count}: {row.Title}");
+                string.Format(Strings.T("progress.update_row"), i + 1, candidates.Count, row.Title));
             try
             {
                 await UpdateModAsync(row);
@@ -527,7 +527,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             }
         }
         _host.Notifications.Notify(
-            failed == 0 ? $"{done} Mod-Update(s) installiert." : $"{done} installiert, {failed} Fehler.",
+            failed == 0 ? string.Format(Strings.T("notify.updates_installed"), done) : string.Format(Strings.T("notify.updates_partial"), done, failed),
             failed == 0 ? NotificationLevel.Success : NotificationLevel.Warning);
         OnPropertyChanged(nameof(HasAnyUpdate));
     }
@@ -546,13 +546,13 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         var catalogEntry = LookupCatalogEntry(snapshot.Entries, row.FileName);
         if (catalogEntry is null)
         {
-            _host.Notifications.Notify("Katalog-Eintrag für Update nicht mehr gefunden.", NotificationLevel.Warning);
+            _host.Notifications.Notify(Strings.T("notify.catalog_entry_missing"), NotificationLevel.Warning);
             return;
         }
         var modId = ExtractModIdFromUrl(catalogEntry.DetailUrl);
         if (modId is null) return;
 
-        using var scope = _host.BeginProgress($"Update: {row.Title}");
+        using var scope = _host.BeginProgress(string.Format(Strings.T("progress.update_prefix"), row.Title));
         var progress = new Progress<ModDownloadProgress>(p =>
             scope.Report(p.Fraction ?? 0, p.FormatShort()));
 
@@ -576,7 +576,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
             if (!wasEnabled)
                 await Task.Run(() => _installer.SetEnabled(newMod, false));
 
-            _host.Notifications.Notify($"Update installiert: {row.Title} → v{row.LatestVersion}",
+            _host.Notifications.Notify(string.Format(Strings.T("notify.update_installed"), row.Title, row.LatestVersion),
                 NotificationLevel.Success);
             _downloadBus.RaiseModInstalled(newMod.FileName);
             Refresh();
@@ -590,7 +590,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25: Update-Install fehlgeschlagen für {Title}", row.Title);
-            _host.Notifications.Notify($"Update-Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.update_install_error"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -643,26 +643,26 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     {
         if (Mods.Count == 0)
         {
-            _host.Notifications.Notify("Keine Mods vorhanden — nichts zu sichern.", NotificationLevel.Warning);
+            _host.Notifications.Notify(Strings.T("notify.no_mods_to_backup"), NotificationLevel.Warning);
             return;
         }
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
         var target = Path.Combine(_paths.BackupsDir, $"ls25-backup-{timestamp}.zip");
-        using var scope = _host.BeginProgress("Backup erstellen …");
+        using var scope = _host.BeginProgress(Strings.T("progress.backup_running"));
         var progress = new Progress<BackupProgress>(p =>
-            scope.Report(p.Fraction, $"{p.Current}/{p.Total} · {p.CurrentFileName}"));
+            scope.Report(p.Fraction, string.Format(Strings.T("progress.backup_row"), p.Current, p.Total, p.CurrentFileName)));
         try
         {
             var result = await _backup.CreateBackupAsync(target, progress);
             _host.Notifications.Notify(
-                $"Backup: {result.ModCount} Mods · {FormatBytes(result.FileSizeBytes)} → {Path.GetFileName(result.FilePath)}",
+                string.Format(Strings.T("notify.backup_ok"), result.ModCount, FormatBytes(result.FileSizeBytes), Path.GetFileName(result.FilePath)),
                 NotificationLevel.Success);
             _host.Shell.OpenDirectory(_paths.BackupsDir);
         }
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25: Backup fehlgeschlagen");
-            _host.Notifications.Notify($"Backup-Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.backup_error"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -670,8 +670,8 @@ public sealed partial class InstalledModsViewModel : ObservableObject
     private async Task RestoreBackupAsync()
     {
         var picked = await _host.Dialogs.PickFileAsync(
-            "Backup-ZIP wählen",
-            ("LS25-Backup (.zip)", new[] { "*.zip" }));
+            Strings.T("dialog.pick_backup_title"),
+            (Strings.T("dialog.pick_backup_filter"), new[] { "*.zip" }));
         if (picked is null) return;
 
         // Preview: Manifest zeigen bevor der Restore läuft.
@@ -679,32 +679,31 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         try { manifest = ModBackupService.ReadManifest(picked); }
         catch (Exception ex)
         {
-            _host.Notifications.Notify($"Backup ungültig: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.backup_invalid"), ex.Message), NotificationLevel.Error);
             return;
         }
 
         var confirm = await _host.Dialogs.ConfirmAsync(
-            "Backup wiederherstellen",
-            $"Backup vom {manifest.CreatedUtc.ToLocalTime():g} · {manifest.Mods.Count} Mods.\n" +
-            "Vorhandene Mod-ZIPs mit gleichem Namen werden überschrieben.\nFortfahren?",
-            okLabel: "Wiederherstellen", cancelLabel: "Abbrechen");
+            Strings.T("dialog.restore_title"),
+            string.Format(Strings.T("dialog.restore_msg"), manifest.CreatedUtc.ToLocalTime().ToString("g"), manifest.Mods.Count),
+            okLabel: Strings.T("dialog.btn_restore"), cancelLabel: Strings.T("dialog.btn_cancel"));
         if (!confirm) return;
 
-        using var scope = _host.BeginProgress("Backup wiederherstellen …");
+        using var scope = _host.BeginProgress(Strings.T("progress.restore_running"));
         var progress = new Progress<BackupProgress>(p =>
-            scope.Report(p.Fraction, $"{p.Current}/{p.Total} · {p.CurrentFileName}"));
+            scope.Report(p.Fraction, string.Format(Strings.T("progress.backup_row"), p.Current, p.Total, p.CurrentFileName)));
         try
         {
             var result = await _backup.RestoreBackupAsync(picked, progress);
             _host.Notifications.Notify(
-                $"Restore: {result.RestoredCount} wiederhergestellt, {result.SkippedCount} übersprungen.",
+                string.Format(Strings.T("notify.restore_ok"), result.RestoredCount, result.SkippedCount),
                 NotificationLevel.Success);
             Refresh();
         }
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25: Restore fehlgeschlagen");
-            _host.Notifications.Notify($"Restore-Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.restore_error"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -732,7 +731,7 @@ public sealed partial class ModRow : ObservableObject
     public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
     public string Size => FormatBytes(Source.FileSizeBytes);
     public bool IsEnabled => Source.IsEnabled;
-    public string StateLabel => Source.IsEnabled ? "aktiv" : "inaktiv";
+    public string StateLabel => Source.IsEnabled ? Strings.T("row.badge_enabled") : Strings.T("row.badge_disabled");
     public string FileName => Source.FileName;
     public string? ErrorText => Source.ReadError;
 
@@ -753,7 +752,7 @@ public sealed partial class ModRow : ObservableObject
     private string? _latestVersion;
 
     public string UpdateBadgeText =>
-        HasUpdate && LatestVersion is not null ? $"⬆ Update v{LatestVersion}" : "";
+        HasUpdate && LatestVersion is not null ? string.Format(Strings.T("row.badge_update_prefix"), LatestVersion) : "";
 
     public void SetUpdateAvailable(string catalogVersion)
     {

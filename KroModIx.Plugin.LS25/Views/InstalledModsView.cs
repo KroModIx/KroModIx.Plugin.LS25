@@ -11,6 +11,7 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using KroModIx.Plugin.LS25.Services;
 
 namespace KroModIx.Plugin.LS25.Views;
 
@@ -55,44 +56,42 @@ public sealed class InstalledModsView : UserControl
     private static Control BuildToolbar()
     {
         // MOD-UPDATES + Bulk-Aktionen für ausgewählte Rows.
-        var updatesBtn = new Button { Name = "CheckUpdatesButton", Content = "🔄  Updates prüfen" };
+        var updatesBtn = new Button { Name = "CheckUpdatesButton", Content = Strings.T("btn.check_updates") };
         updatesBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.CheckUpdatesCommand)));
 
-        var updateAllBtn = new Button { Name = "UpdateAllButton", Content = "⬆  Alle updaten" };
+        var updateAllBtn = new Button { Name = "UpdateAllButton", Content = Strings.T("btn.update_all") };
         updateAllBtn.Classes.Add("accent");
         updateAllBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.UpdateAllCommand)));
         updateAllBtn.Bind(Button.IsEnabledProperty, new Binding(nameof(InstalledModsViewModel.HasAnyUpdate)));
-        ToolTip.SetTip(updateAllBtn,
-            "Installiert alle Updates sequenziell. Erst 'Updates pruefen' klicken damit was zu tun ist.");
+        ToolTip.SetTip(updateAllBtn, Strings.T("tooltip.update_all"));
 
-        var installBtn = new Button { Content = "📁  ZIP installieren…" };
+        var installBtn = new Button { Content = Strings.T("btn.install_zip") };
         installBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.InstallFromFileCommand)));
         // v1.9+: Bulk-Import — ganzen Ordner voller ZIPs auf einmal
-        var bulkImportBtn = new Button { Content = "📂  Ordner importieren…" };
+        var bulkImportBtn = new Button { Content = Strings.T("btn.import_folder") };
         bulkImportBtn.Bind(Button.CommandProperty,
             new Binding(nameof(InstalledModsViewModel.InstallFromFolderCommand)));
-        ToolTip.SetTip(bulkImportBtn,
-            "Waehlt einen Ordner (z.B. Downloads/LS25) — alle .zip darin werden nacheinander installiert.");
-        var refreshBtn = new Button { Content = "↺  Aktualisieren" };
+        ToolTip.SetTip(bulkImportBtn, Strings.T("tooltip.import_folder"));
+        var refreshBtn = new Button { Content = Strings.T("btn.refresh") };
         refreshBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.RefreshCommand)));
 
         // Bulk-Buttons — nur aktiv/klar sichtbar wenn > 1 Row selektiert.
         // Bei einer Selektion greifen weiter die Row-Buttons rechts an der Card.
-        var toggleBulkBtn = new Button { Content = "🔀  Aktiv/Inaktiv" };
+        var toggleBulkBtn = new Button { Content = Strings.T("btn.toggle_bulk") };
         toggleBulkBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.ToggleEnabledBulkCommand)));
         toggleBulkBtn.Bind(Button.IsEnabledProperty, new Binding(nameof(InstalledModsViewModel.HasMultiSelection)));
 
-        var uninstallBulkBtn = new Button { Content = "🗑  Auswahl deinstallieren" };
+        var uninstallBulkBtn = new Button { Content = Strings.T("btn.uninstall_selection") };
         uninstallBulkBtn.Classes.Add("danger");
         uninstallBulkBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.UninstallBulkCommand)));
         uninstallBulkBtn.Bind(Button.IsEnabledProperty, new Binding(nameof(InstalledModsViewModel.HasMultiSelection)));
 
         // SYSTEM
-        var openFolderBtn = new Button { Content = "📂  Mod-Ordner" };
+        var openFolderBtn = new Button { Content = Strings.T("btn.mods_folder") };
         openFolderBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.OpenModsFolderCommand)));
-        var backupBtn = new Button { Content = "💾  Backup" };
+        var backupBtn = new Button { Content = Strings.T("btn.backup") };
         backupBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.CreateBackupCommand)));
-        var restoreBtn = new Button { Content = "♻  Restore" };
+        var restoreBtn = new Button { Content = Strings.T("btn.restore") };
         restoreBtn.Bind(Button.CommandProperty, new Binding(nameof(InstalledModsViewModel.RestoreBackupCommand)));
 
         var toolbar = new StackPanel
@@ -123,7 +122,7 @@ public sealed class InstalledModsView : UserControl
         {
             [!TextBox.PlaceholderTextProperty] = new Binding
             {
-                Source = "Installierte Mods filtern (Titel/Autor/Dateiname) …",
+                Source = Strings.T("placeholder.filter_installed"),
             },
             Margin = new Thickness(0, 0, 8, 0),
         };
@@ -134,7 +133,7 @@ public sealed class InstalledModsView : UserControl
 
     private Control BuildFilterRow()
     {
-        var onlyUpdate = new ToggleButton { Content = "⬆  Nur mit Update" };
+        var onlyUpdate = new ToggleButton { Content = Strings.T("btn.only_with_update") };
         onlyUpdate.Bind(ToggleButton.IsCheckedProperty, new Binding(nameof(InstalledModsViewModel.OnlyWithUpdate))
         { Mode = BindingMode.TwoWay });
 
@@ -166,7 +165,7 @@ public sealed class InstalledModsView : UserControl
         };
         text.Classes.Add("muted");
         text.Bind(TextBlock.TextProperty, new Binding(nameof(InstalledModsViewModel.ModsDir))
-        { StringFormat = "Mods-Ordner: {0}" });
+        { StringFormat = Strings.T("label.mods_dir_prefix") });
         return text;
     }
 
@@ -263,7 +262,7 @@ public sealed class InstalledModsView : UserControl
         };
         enabledBadge.Child = new TextBlock
         {
-            Text = "aktiv", FontSize = 10, FontWeight = FontWeight.SemiBold,
+            Text = Strings.T("row.badge_enabled"), FontSize = 10, FontWeight = FontWeight.SemiBold,
             Foreground = Brushes.White,
         };
         enabledBadge.Bind(Border.IsVisibleProperty, new Binding(nameof(ModRow.IsEnabled)));
@@ -311,20 +310,19 @@ public sealed class InstalledModsView : UserControl
         };
 
         // Row-Aktionen rechts
-        var updateBtn = new Button { Content = "⬆  Update" };
+        var updateBtn = new Button { Content = Strings.T("btn.row_update") };
         updateBtn.Classes.Add("accent");
         BindRowCommand(updateBtn, nameof(InstalledModsViewModel.UpdateModCommand));
         updateBtn.Bind(Button.IsVisibleProperty, new Binding(nameof(ModRow.HasUpdate)));
 
-        var detailBtn = new Button { Content = "🔍  Details" };
+        var detailBtn = new Button { Content = Strings.T("btn.row_details") };
         BindRowCommand(detailBtn, nameof(InstalledModsViewModel.ShowDetailCommand));
-        ToolTip.SetTip(detailBtn,
-            "GIANTS-Detail-Dialog öffnen (Fuzzy-Match Filename → Katalog — Katalog muss vorher via ModHub-Tab geladen sein)");
+        ToolTip.SetTip(detailBtn, Strings.T("tooltip.row_details_installed"));
 
-        var toggleBtn = new Button { Content = "⏻  (De-)Aktivieren" };
+        var toggleBtn = new Button { Content = Strings.T("btn.row_toggle") };
         BindRowCommand(toggleBtn, nameof(InstalledModsViewModel.ToggleEnabledRowCommand));
 
-        var uninstallBtn = new Button { Content = "🗑  Deinstallieren" };
+        var uninstallBtn = new Button { Content = Strings.T("btn.row_uninstall") };
         uninstallBtn.Classes.Add("danger");
         BindRowCommand(uninstallBtn, nameof(InstalledModsViewModel.UninstallRowCommand));
 
@@ -353,13 +351,13 @@ public sealed class InstalledModsView : UserControl
         // Kontextmenü pro Row — für Ein-Row-Aktionen. Bei Multi-Selection
         // wirken die Toolbar-Bulk-Buttons.
         var ctxMenu = new ContextMenu();
-        var miToggle = new MenuItem { Header = "⏻  (De-)Aktivieren" };
+        var miToggle = new MenuItem { Header = Strings.T("btn.row_toggle") };
         BindRowCommand(miToggle, nameof(InstalledModsViewModel.ToggleEnabledRowCommand));
-        var miDetail = new MenuItem { Header = "🔍  Details" };
+        var miDetail = new MenuItem { Header = Strings.T("btn.row_details") };
         BindRowCommand(miDetail, nameof(InstalledModsViewModel.ShowDetailCommand));
-        var miUninstall = new MenuItem { Header = "🗑  Deinstallieren" };
+        var miUninstall = new MenuItem { Header = Strings.T("btn.row_uninstall") };
         BindRowCommand(miUninstall, nameof(InstalledModsViewModel.UninstallRowCommand));
-        var miUpdate = new MenuItem { Header = "⬆  Update" };
+        var miUpdate = new MenuItem { Header = Strings.T("btn.row_update") };
         BindRowCommand(miUpdate, nameof(InstalledModsViewModel.UpdateModCommand));
         miUpdate.Bind(MenuItem.IsVisibleProperty, new Binding(nameof(ModRow.HasUpdate)));
         ctxMenu.Items.Add(miUpdate);

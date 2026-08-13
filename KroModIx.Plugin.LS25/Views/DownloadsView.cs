@@ -6,6 +6,7 @@ using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using KroModIx.Plugin.LS25.Services;
 
 namespace KroModIx.Plugin.LS25.Views;
 
@@ -33,15 +34,14 @@ public sealed class DownloadsView : UserControl
 
     private static Control BuildToolbar()
     {
-        var installAllBtn = new Button { Name = "InstallAllButton", Content = "📥  Alle installieren" };
+        var installAllBtn = new Button { Name = "InstallAllButton", Content = Strings.T("btn.install_all") };
         installAllBtn.Classes.Add("accent");
         installAllBtn.Bind(Button.CommandProperty, new Binding(nameof(DownloadsViewModel.InstallAllCommand)));
-        ToolTip.SetTip(installAllBtn,
-            "Installiert alle Downloads (überschreibt bestehende Versionen). Ideal nach einem Update-Batch.");
+        ToolTip.SetTip(installAllBtn, Strings.T("tooltip.install_all"));
 
-        var refreshBtn = new Button { Content = "↺  Aktualisieren" };
+        var refreshBtn = new Button { Content = Strings.T("btn.refresh") };
         refreshBtn.Bind(Button.CommandProperty, new Binding(nameof(DownloadsViewModel.RefreshCommand)));
-        var openBtn = new Button { Content = "📂  Downloads-Ordner" };
+        var openBtn = new Button { Content = Strings.T("btn.downloads_folder") };
         openBtn.Bind(Button.CommandProperty, new Binding(nameof(DownloadsViewModel.OpenDownloadsFolderCommand)));
 
         return new StackPanel
@@ -62,7 +62,7 @@ public sealed class DownloadsView : UserControl
         };
         t.Classes.Add("muted");
         t.Bind(TextBlock.TextProperty, new Binding(nameof(DownloadsViewModel.DownloadsDir))
-        { StringFormat = "Downloads: {0}" });
+        { StringFormat = Strings.T("label.downloads_prefix") });
         return t;
     }
 
@@ -146,7 +146,7 @@ public sealed class DownloadsView : UserControl
         };
         installedBadge.Child = new TextBlock
         {
-            Text = "✓ INSTALLIERT",
+            Text = Strings.T("badge.installed"),
             FontSize = 10, FontWeight = FontWeight.SemiBold,
             Foreground = Brushes.White,
         };
@@ -191,7 +191,7 @@ public sealed class DownloadsView : UserControl
         };
 
         // Row-Buttons rechts: Installieren (accent) + Details + Löschen (danger)
-        var installBtn = new Button { Content = "📥  Installieren" };
+        var installBtn = new Button { Content = Strings.T("btn.row_install") };
         installBtn.Classes.Add("accent");
         installBtn.Bind(Button.CommandProperty, new Binding
         {
@@ -200,17 +200,16 @@ public sealed class DownloadsView : UserControl
         });
         installBtn.Bind(Button.CommandParameterProperty, new Binding("."));
 
-        var detailBtn = new Button { Content = "🔍  Details" };
+        var detailBtn = new Button { Content = Strings.T("btn.row_details") };
         detailBtn.Bind(Button.CommandProperty, new Binding
         {
             RelativeSource = new RelativeSource { Mode = RelativeSourceMode.FindAncestor, AncestorType = typeof(ListBox) },
             Path = "DataContext." + nameof(DownloadsViewModel.ShowDetailCommand),
         });
         detailBtn.Bind(Button.CommandParameterProperty, new Binding("."));
-        ToolTip.SetTip(detailBtn,
-            "ModHub-Detail-Dialog öffnen (Fuzzy-Match auf Katalog — braucht geladenen ModHub-Katalog)");
+        ToolTip.SetTip(detailBtn, Strings.T("tooltip.row_show_detail_download"));
 
-        var deleteBtn = new Button { Content = "🗑  Löschen" };
+        var deleteBtn = new Button { Content = Strings.T("btn.row_delete") };
         deleteBtn.Classes.Add("danger");
         deleteBtn.Bind(Button.CommandProperty, new Binding
         {

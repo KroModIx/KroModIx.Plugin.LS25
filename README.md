@@ -16,6 +16,19 @@ Detail-Dialog, Backup/Restore.
 - Windows: `Documents\My Games\FarmingSimulator2025\mods\`
 - Linux (Proton): `<Proton-Prefix>/drive_c/users/steamuser/My Documents/My Games/FarmingSimulator2025/mods/`
 
+## Neu in v1.15.0
+- **DE+EN-Übersetzung** aller User-facing Strings (128 Keys) — Tab-Labels,
+  Buttons, Placeholders, Tooltips, Statusmeldungen, Notifications, Dialoge.
+  Sprachwechsel im Host schaltet nach Kachel-Reselect (Host-Tab-Cache
+  invalidiert seit v1.14.7) live um.
+
+## Neu in v1.14.0
+- **DDS-Preview mit ffmpeg-Fallback**: Pfim decodiert BC1/BC2/BC3 und
+  unkomprimierte Formate, für BC7 + exotische DXT-Varianten fällt der
+  Converter jetzt auf `ffmpeg -f dds -i pipe:0 -f image2pipe -c:v png pipe:1`
+  zurück. Kein Fehler wenn ffmpeg fehlt — Convert liefert dann null, die
+  UI zeigt den Icon-Fallback.
+
 ## Features (v1.12.0)
 
 ### Installiert-Tab

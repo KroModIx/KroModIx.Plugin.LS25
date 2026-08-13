@@ -43,7 +43,7 @@ public sealed class ModHubView : UserControl
         var sourceBox = new ComboBox
         {
             Width = 170,
-            [!ComboBox.PlaceholderTextProperty] = new Binding { Source = "Alle Quellen" },
+            [!ComboBox.PlaceholderTextProperty] = new Binding { Source = Strings.T("placeholder.all_sources") },
             DisplayMemberBinding = new Binding(nameof(SourceFilterOption.Label)),
         };
         sourceBox.Bind(ComboBox.ItemsSourceProperty, new Binding(nameof(ModHubViewModel.Sources)));
@@ -53,7 +53,7 @@ public sealed class ModHubView : UserControl
         var categoryBox = new ComboBox
         {
             Width = 220,
-            [!ComboBox.PlaceholderTextProperty] = new Binding { Source = "Alle Kategorien" },
+            [!ComboBox.PlaceholderTextProperty] = new Binding { Source = Strings.T("placeholder.all_categories") },
             DisplayMemberBinding = new Binding(nameof(ModHubCategory.Label)),
         };
         categoryBox.Bind(ComboBox.ItemsSourceProperty, new Binding(nameof(ModHubViewModel.Categories)));
@@ -63,12 +63,12 @@ public sealed class ModHubView : UserControl
         var searchBox = new TextBox
         {
             Width = 240,
-            [!TextBox.PlaceholderTextProperty] = new Binding { Source = "Titel/Autor/Kategorie …" },
+            [!TextBox.PlaceholderTextProperty] = new Binding { Source = Strings.T("placeholder.search_modhub") },
         };
         searchBox.Bind(TextBox.TextProperty, new Binding(nameof(ModHubViewModel.SearchText))
         { Mode = BindingMode.TwoWay });
 
-        var refreshBtn = new Button { Content = "↺  Katalog neu laden" };
+        var refreshBtn = new Button { Content = Strings.T("btn.reload_catalog") };
         refreshBtn.Classes.Add("ghost");
         refreshBtn.Bind(Button.CommandProperty, new Binding(nameof(ModHubViewModel.RefreshCatalogCommand)));
 
@@ -83,7 +83,7 @@ public sealed class ModHubView : UserControl
         // (Standard, NEU zuerst, Name, Autor, Kategorie).
         var sortLabel = new TextBlock
         {
-            Text = "Sortierung:",
+            Text = Strings.T("label.sort"),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 6, 0),
         };
@@ -116,7 +116,7 @@ public sealed class ModHubView : UserControl
     {
         var hint = new TextBlock
         {
-            Text = "GIANTS: In-App-Download · Hof Hirschfeld & modhoster: Detail-Klick öffnet die Seite im Browser (Consent-Overlay bzw. Login-Pflicht).",
+            Text = Strings.T("hint.modhub_sources"),
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 8),
@@ -130,11 +130,11 @@ public sealed class ModHubView : UserControl
         var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var label = new TextBlock
         {
-            Text = "🤖  KI-Zusammenfassung",
+            Text = Strings.T("label.ai_summary"),
             VerticalAlignment = VerticalAlignment.Center,
         };
         label.Classes.Add("h2");
-        var closeBtn = new Button { Content = "✕", Padding = new Thickness(8, 2) };
+        var closeBtn = new Button { Content = Strings.T("btn.close_summary"), Padding = new Thickness(8, 2) };
         closeBtn.Classes.Add("ghost");
         closeBtn.Bind(Button.CommandProperty, new Binding(nameof(ModHubViewModel.CloseSummaryCommand)));
         header.Children.Add(label);
@@ -238,11 +238,11 @@ public sealed class ModHubView : UserControl
         // ✓ INSTALLIERT (grün mit weißem Text) — Fuzzy-Match Titel ↔ Filename.
         // Analog Downloads-Tab-Badge; MakeBadge braucht IBrush-Overload weil
         // Weiß nicht als Kroste-Resource-Key existiert.
-        titleRow.Children.Add(MakeBadgeSolid("✓ INSTALLIERT",
+        titleRow.Children.Add(MakeBadgeSolid(Strings.T("badge.installed"),
             "KrosteSuccessBrush", Brushes.White, new Binding(nameof(CatalogRow.IsInstalled))));
-        titleRow.Children.Add(MakeBadge(new Binding { Source = "⭐ EMPFOHLEN" },
+        titleRow.Children.Add(MakeBadge(new Binding { Source = Strings.T("badge.featured") },
             "KrosteGoldBrush", null, new Binding(nameof(CatalogRow.IsFeatured))));
-        titleRow.Children.Add(MakeBadge(new Binding { Source = "NEU" },
+        titleRow.Children.Add(MakeBadge(new Binding { Source = Strings.T("badge.new") },
             "KrosteGoldBrush", null, new Binding(nameof(CatalogRow.IsNew))));
 
         // Author · Category
@@ -274,7 +274,7 @@ public sealed class ModHubView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             Orientation = Orientation.Vertical,
         };
-        var downloadBtn = new Button { Content = "⬇  Herunterladen" };
+        var downloadBtn = new Button { Content = Strings.T("btn.row_download") };
         downloadBtn.Classes.Add("accent");
         downloadBtn.Bind(Button.CommandProperty, new Binding
         {
@@ -285,7 +285,7 @@ public sealed class ModHubView : UserControl
         downloadBtn.Bind(Button.CommandParameterProperty, new Binding("."));
         downloadBtn.Bind(Button.IsVisibleProperty, new Binding(nameof(CatalogRow.CanInAppDownload)));
 
-        var browserBtn = new Button { Content = "🌐  Im Browser" };
+        var browserBtn = new Button { Content = Strings.T("btn.row_browser") };
         browserBtn.Classes.Add("accent");
         browserBtn.Bind(Button.CommandProperty, new Binding
         {
@@ -295,7 +295,7 @@ public sealed class ModHubView : UserControl
         browserBtn.Bind(Button.CommandParameterProperty, new Binding("."));
         browserBtn.Bind(Button.IsVisibleProperty, new Binding(nameof(CatalogRow.NeedsBrowser)));
 
-        var detailsBtn = new Button { Content = "👁  Details" };
+        var detailsBtn = new Button { Content = Strings.T("btn.row_show_details") };
         detailsBtn.Classes.Add("ghost");
         detailsBtn.Bind(Button.CommandProperty, new Binding
         {

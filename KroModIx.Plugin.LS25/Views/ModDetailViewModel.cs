@@ -54,7 +54,7 @@ public sealed partial class ModDetailViewModel : ObservableObject
         Title = _fallbackTitle;
         Author = _fallbackAuthor;
         Category = _fallbackCategory;
-        Description = "Detail-Seite wird geladen …";
+        Description = Strings.T("detail.status.loading");
 
         _ = LoadDetailAsync();
     }
@@ -68,7 +68,7 @@ public sealed partial class ModDetailViewModel : ObservableObject
     [ObservableProperty] private string _platform = "";
     [ObservableProperty] private string _rating = "";
     [ObservableProperty] private string _description = "";
-    [ObservableProperty] private string _statusText = "Detail-Seite wird geladen …";
+    [ObservableProperty] private string _statusText = Strings.T("detail.status.loading");
     [ObservableProperty] private bool _isLoading = true;
 
     [ObservableProperty]
@@ -87,8 +87,8 @@ public sealed partial class ModDetailViewModel : ObservableObject
             var detail = await _hub.FetchModDetailAsync(_modId, Language);
             if (detail is null)
             {
-                Description = "Detail-Seite konnte nicht geladen werden.";
-                StatusText = "Fehler beim Laden.";
+                Description = Strings.T("detail.status.load_error");
+                StatusText = Strings.T("detail.status.short_error");
                 return;
             }
             Title = string.IsNullOrWhiteSpace(detail.Title) ? _fallbackTitle : detail.Title;
@@ -100,20 +100,20 @@ public sealed partial class ModDetailViewModel : ObservableObject
             Platform = detail.Platform ?? "";
             Rating = detail.RatingText ?? "";
             Description = string.IsNullOrWhiteSpace(detail.DescriptionText)
-                ? "Keine Beschreibung im Detail-Endpoint."
+                ? Strings.T("detail.no_description")
                 : detail.DescriptionText;
 
             foreach (var url in detail.ScreenshotUrls)
                 Screenshots.Add(new ScreenshotItem(url));
             _ = LoadScreenshotBitmapsAsync();
 
-            StatusText = $"{Screenshots.Count} Screenshot(s) · v{Version}";
+            StatusText = string.Format(Strings.T("detail.status.summary"), Screenshots.Count, Version);
         }
         catch (Exception ex)
         {
             Log.Warn(ex, "Detail-Load fehlgeschlagen für mod_id={Id}", _modId);
-            Description = $"Fehler: {ex.Message}";
-            StatusText = "Fehler beim Laden.";
+            Description = string.Format(Strings.T("detail.error_prefix"), ex.Message);
+            StatusText = Strings.T("detail.status.short_error");
         }
         finally
         {
@@ -155,7 +155,7 @@ public sealed partial class ModDetailViewModel : ObservableObject
     [RelayCommand]
     private async Task DownloadAsync()
     {
-        using var scope = _host.BeginProgress($"Download: {Title}");
+        using var scope = _host.BeginProgress(string.Format(Strings.T("progress.download_prefix"), Title));
         var progress = new Progress<ModDownloadProgress>(p =>
             scope.Report(p.Fraction ?? 0, p.FormatShort()));
         try
@@ -163,16 +163,16 @@ public sealed partial class ModDetailViewModel : ObservableObject
             var result = await _hub.DownloadModAsync(_modId, Language, progress, default, _fallbackPreviewUrl);
             if (result is null)
             {
-                _host.Notifications.Notify("Download fehlgeschlagen (siehe Log).", NotificationLevel.Error);
+                _host.Notifications.Notify(Strings.T("notify.download_failed"), NotificationLevel.Error);
                 return;
             }
-            _host.Notifications.Notify($"Heruntergeladen: {result.FileName}", NotificationLevel.Success);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.downloaded_prefix"), result.FileName), NotificationLevel.Success);
             _downloadBus.RaiseDownloadsChanged(result.FileName);
         }
         catch (Exception ex)
         {
             Log.Warn(ex, "Download aus Detail-Dialog fehlgeschlagen für mod_id={Id}", _modId);
-            _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.error_prefix"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -181,18 +181,18 @@ public sealed partial class ModDetailViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(Description) || IsLoading)
         {
-            _host.Notifications.Notify("Bitte warten bis Detail geladen ist.", NotificationLevel.Info);
+            _host.Notifications.Notify(Strings.T("notify.detail_wait"), NotificationLevel.Info);
             return;
         }
         if (!await _host.Ai.IsAvailableAsync())
         {
             _host.Notifications.Notify(
-                "KI-Provider nicht erreichbar — bitte in den KroModIx-Einstellungen konfigurieren.",
+                Strings.T("notify.ai_unavailable"),
                 NotificationLevel.Warning);
             return;
         }
         SummaryBusy = true;
-        SummaryText = $"KI-Zusammenfassung via {_host.Ai.ProviderInfo} …";
+        SummaryText = string.Format(Strings.T("detail.summary.busy"), _host.Ai.ProviderInfo);
         try
         {
             var systemPrompt = "Du bist ein deutschsprachiger LS25-Mod-Reviewer. " +
@@ -201,12 +201,12 @@ public sealed partial class ModDetailViewModel : ObservableObject
                 "Kein Werbe-Sprech, sachlich.";
             var userPrompt = $"Titel: {Title}\nAutor: {Author}\n\nBeschreibung:\n{Description}";
             var answer = await _host.Ai.CompleteAsync(systemPrompt, userPrompt);
-            SummaryText = string.IsNullOrWhiteSpace(answer) ? "KI hat keine Antwort geliefert." : answer;
+            SummaryText = string.IsNullOrWhiteSpace(answer) ? Strings.T("detail.summary.no_answer") : answer;
         }
         catch (Exception ex)
         {
             Log.Warn(ex, "Summarize im Detail fehlgeschlagen");
-            SummaryText = $"Fehler: {ex.Message}";
+            SummaryText = string.Format(Strings.T("detail.error_prefix"), ex.Message);
         }
         finally
         {

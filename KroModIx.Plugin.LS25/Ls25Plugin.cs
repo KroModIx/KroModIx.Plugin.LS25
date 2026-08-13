@@ -15,9 +15,9 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
     public PluginMetadata Metadata { get; } = new(
         Id: "kroste.ls25",
         DisplayName: "Landwirtschafts-Simulator 25",
-        Version: "1.13.1",
+        Version: "1.15.0",
         Author: "Kroste",
-        Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung, grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Einträgen (IUpdateNotifier).");
+        Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. v1.15.0: DE+EN-Uebersetzung aller User-facing Strings. v1.14: DDS-Preview mit ffmpeg-Fallback fuer BC7 + exotische DXT-Kompressionen. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung, grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Einträgen (IUpdateNotifier).");
 
     public IReadOnlyList<GameTarget> Targets { get; } = new[]
     {
@@ -48,6 +48,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
 
     public Task InitializeAsync(IHostServices host, IReadOnlyList<DetectedGame> activatedGames, CancellationToken ct)
     {
+        Services.Strings.Init(host.Localization);
         _host = host;
         _paths = new Ls25Paths(host);
         _settings = new Ls25SettingsService(_paths);
@@ -172,7 +173,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
             InstalledUpdatesChecker updatesChecker)
         { _installer = installer; _backup = backup; _previews = previews; _hub = hub; _cache = cache; _paths = paths; _downloadBus = downloadBus; _host = host; _updatesChecker = updatesChecker; }
         public string Id => "installed";
-        public string Label => "Installiert";
+        public string Label => Services.Strings.T("tab.installed");
         public string Icon => "\U0001F69C";
         public int Order => 0;
         public bool IsVisible(DetectedGame game) => true;
@@ -198,7 +199,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
             IHostServices host)
         { _hub = hub; _hof = hof; _modhoster = modhoster; _cache = cache; _installer = installer; _previews = previews; _settings = settings; _downloadBus = downloadBus; _host = host; }
         public string Id => "modhub";
-        public string Label => "ModHub";
+        public string Label => Services.Strings.T("tab.modhub");
         public string Icon => "\U0001F3EA"; // 🏪
         public int Order => 10;
         public bool IsVisible(DetectedGame game) => true;
@@ -220,7 +221,7 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
         { _installer = installer; _previews = previews; _hub = hub; _cache = cache;
           _downloadBus = downloadBus; _host = host; }
         public string Id => "downloads";
-        public string Label => "Downloads";
+        public string Label => Services.Strings.T("tab.downloads");
         public string Icon => "\U0001F4E5"; // 📥
         public int Order => 20;
         public bool IsVisible(DetectedGame game) => true;

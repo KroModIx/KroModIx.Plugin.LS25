@@ -46,7 +46,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
         _cache = cache;
         _downloadBus = downloadBus;
         _host = host;
-        DownloadsDir = installer.DownloadsDir ?? "(nicht konfiguriert)";
+        DownloadsDir = installer.DownloadsDir ?? Strings.T("status.downloads_dir_missing");
         RefreshCommand.Execute(null);
 
         // Auto-Refresh: sobald der ModHub-Tab (oder ein anderer Tab) einen
@@ -57,7 +57,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 Refresh();
-                _host.Notifications.Notify($"Downloads aktualisiert: {fileName}",
+                _host.Notifications.Notify(string.Format(Strings.T("notify.downloads_updated"), fileName),
                     NotificationLevel.Info);
             });
         };
@@ -86,7 +86,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
     [RelayCommand]
     private void Refresh()
     {
-        Summary = "Downloads werden gelesen …";
+        Summary = Strings.T("status.reading_downloads");
         _ = Task.Run(async () =>
         {
             List<InstalledMod>? downloaded = null;
@@ -119,12 +119,12 @@ public sealed partial class DownloadsViewModel : ObservableObject
                     }
                     var totalBytes = Rows.Sum(r => r.Source.FileSizeBytes);
                     Summary = Rows.Count == 0
-                        ? "Keine heruntergeladenen Mods."
-                        : $"{Rows.Count} ZIPs · {totalBytes / 1024.0 / 1024.0:F1} MB gesamt";
+                        ? Strings.T("status.no_downloads")
+                        : string.Format(Strings.T("status.downloads_summary"), Rows.Count, totalBytes / 1024.0 / 1024.0);
                 }
                 else
                 {
-                    Summary = $"Fehler beim Lesen des Downloads-Ordners: {error}";
+                    Summary = string.Format(Strings.T("status.downloads_read_error"), error);
                 }
                 _ = LoadPreviewsAsync(Rows.ToArray());
             });
@@ -182,14 +182,14 @@ public sealed partial class DownloadsViewModel : ObservableObject
             // overwrite=true damit Updates funktionieren (gleicher Filename wird
             // ohne Frage überschrieben — analog Bulk-Install-Verhalten).
             var installed = _installer.Install(row.Source.FilePath, overwrite: true);
-            _host.Notifications.Notify($"Installiert: {installed.FileName}", NotificationLevel.Success);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.installed_prefix"), installed.FileName), NotificationLevel.Success);
             _downloadBus.RaiseModInstalled(installed.FileName);
             Refresh();
         }
         catch (Exception ex)
         {
             _host.Logger.Warn(ex, "LS25 Install-from-download fehlgeschlagen");
-            _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.error_prefix"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -203,15 +203,15 @@ public sealed partial class DownloadsViewModel : ObservableObject
         var rows = Rows.ToArray();
         if (rows.Length == 0)
         {
-            _host.Notifications.Notify("Keine Downloads zu installieren.", NotificationLevel.Info);
+            _host.Notifications.Notify(Strings.T("notify.no_downloads_install"), NotificationLevel.Info);
             return;
         }
-        using var scope = _host.BeginProgress($"Installiere {rows.Length} Downloads …");
+        using var scope = _host.BeginProgress(string.Format(Strings.T("progress.install_downloads"), rows.Length));
         int done = 0, failed = 0;
         for (int i = 0; i < rows.Length; i++)
         {
             var row = rows[i];
-            scope.Report((double)i / rows.Length, $"Installiere {i + 1}/{rows.Length}: {row.Title}");
+            scope.Report((double)i / rows.Length, string.Format(Strings.T("progress.install_row"), i + 1, rows.Length, row.Title));
             try
             {
                 var installed = _installer.Install(row.Source.FilePath, overwrite: true);
@@ -225,8 +225,8 @@ public sealed partial class DownloadsViewModel : ObservableObject
             }
         }
         var msg = failed == 0
-            ? $"{done} Downloads installiert."
-            : $"{done} installiert, {failed} Fehler (siehe Log).";
+            ? string.Format(Strings.T("notify.downloads_installed"), done)
+            : string.Format(Strings.T("notify.downloads_install_partial"), done, failed);
         _host.Notifications.Notify(msg,
             failed == 0 ? NotificationLevel.Success : NotificationLevel.Warning);
         Refresh();
@@ -240,19 +240,19 @@ public sealed partial class DownloadsViewModel : ObservableObject
     {
         if (row is null) return;
         bool ok = await _host.Dialogs.ConfirmAsync(
-            "Download löschen",
-            $"„{row.Source.FileName}“ aus dem Downloads-Ordner löschen?",
-            okLabel: "Löschen", cancelLabel: "Abbrechen");
+            Strings.T("dialog.delete_download_title"),
+            string.Format(Strings.T("dialog.delete_download_msg"), row.Source.FileName),
+            okLabel: Strings.T("dialog.btn_delete"), cancelLabel: Strings.T("dialog.btn_cancel"));
         if (!ok) return;
         try
         {
             _installer.DeleteDownload(row.Source.FilePath);
-            _host.Notifications.Notify($"Gelöscht: {row.Source.FileName}", NotificationLevel.Success);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.deleted_prefix"), row.Source.FileName), NotificationLevel.Success);
             Refresh();
         }
         catch (Exception ex)
         {
-            _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.error_prefix"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -271,7 +271,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
         if (snapshot is null || snapshot.Entries.Count == 0)
         {
             _host.Notifications.Notify(
-                "Kein Katalog-Cache vorhanden. Erst ModHub-Tab öffnen, damit der Katalog geladen wird.",
+                Strings.T("notify.no_catalog_cache"),
                 NotificationLevel.Warning);
             return;
         }
@@ -279,7 +279,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
         if (entry is null)
         {
             _host.Notifications.Notify(
-                $"Kein Katalog-Eintrag für „{row.Title}\" gefunden (Fuzzy-Match hat nicht gegriffen).",
+                string.Format(Strings.T("notify.no_catalog_match"), row.Title),
                 NotificationLevel.Info);
             return;
         }
@@ -287,7 +287,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
         if (modId is null)
         {
             _host.Notifications.Notify(
-                $"Katalog-Eintrag hat keine mod_id: {entry.DetailUrl}",
+                string.Format(Strings.T("notify.no_mod_id"), entry.DetailUrl),
                 NotificationLevel.Warning);
             return;
         }

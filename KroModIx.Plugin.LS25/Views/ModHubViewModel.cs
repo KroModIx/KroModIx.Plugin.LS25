@@ -59,26 +59,26 @@ public sealed partial class ModHubViewModel : ObservableObject
 
         Categories = new ObservableCollection<ModHubCategory>
         {
-            new("", "Alle Kategorien"),
+            new("", Strings.T("filter.all_categories")),
         };
         SelectedCategory = Categories[0];
 
         Sources = new ObservableCollection<SourceFilterOption>
         {
-            new(null, "Alle Quellen"),
-            new(ModHubEntry.GiantsSource, "GIANTS ModHub"),
-            new(ModHubEntry.HofHirschfeldSource, "Hof Hirschfeld"),
-            new(ModHubEntry.ModhosterSource, "modhoster"),
+            new(null, Strings.T("filter.all_sources")),
+            new(ModHubEntry.GiantsSource, Strings.T("source.giants")),
+            new(ModHubEntry.HofHirschfeldSource, Strings.T("source.hof_hirschfeld")),
+            new(ModHubEntry.ModhosterSource, Strings.T("source.modhoster")),
         };
         SelectedSource = Sources[0];
 
         SortOptions = new ObservableCollection<CatalogSortOption>
         {
-            new("default",  "Standard"),
-            new("neu",      "NEU zuerst"),
-            new("name",     "Name (A–Z)"),
-            new("author",   "Autor (A–Z)"),
-            new("category", "Kategorie (A–Z)"),
+            new("default",  Strings.T("sort.default")),
+            new("neu",      Strings.T("sort.new_first")),
+            new("name",     Strings.T("sort.name")),
+            new("author",   Strings.T("sort.author")),
+            new("category", Strings.T("sort.category")),
         };
         SelectedSort = SortOptions[0];
 
@@ -103,7 +103,7 @@ public sealed partial class ModHubViewModel : ObservableObject
     private CatalogSortOption? _selectedSort;
 
     [ObservableProperty]
-    private string _status = "Katalog wird geladen …";
+    private string _status = Strings.T("status.loading_catalog");
 
     [ObservableProperty]
     private bool _isBusy;
@@ -151,7 +151,7 @@ public sealed partial class ModHubViewModel : ObservableObject
         {
             await AddEntriesBatchedAsync(snapshot.Entries);
             var ageH = (int)(DateTime.UtcNow - snapshot.SavedUtc).TotalHours;
-            Status = $"{Rows.Count} Mods aus Cache (Alter: {ageH} h).";
+            Status = string.Format(Strings.T("status.cache_summary"), Rows.Count, ageH);
 
             // Update-Badge auf der FS25-Kachel zurücksetzen: der User hat den
             // Katalog jetzt gesehen. GameUpdateBadgeService fragt beim
@@ -209,7 +209,7 @@ public sealed partial class ModHubViewModel : ObservableObject
             if (i - batchStart >= BatchSize)
             {
                 batchStart = i;
-                Status = $"Cache: {i}/{entries.Count} Mods …";
+                Status = string.Format(Strings.T("status.cache_batch"), i, entries.Count);
                 await Task.Delay(1);
             }
         }
@@ -237,7 +237,7 @@ public sealed partial class ModHubViewModel : ObservableObject
         var ct = _fullLoadCts.Token;
 
         IsBusy = true;
-        Status = "Katalog-Load …";
+        Status = Strings.T("status.catalog_full_load");
         try
         {
             var giantsTask = LoadGiantsAsync(ct);
@@ -247,13 +247,13 @@ public sealed partial class ModHubViewModel : ObservableObject
 
             _cache.Save(_allEntries, Language);
             _cache.SaveSeenSnapshot(_allEntries.Select(e => e.DetailUrl), Language);
-            Status = $"{_allEntries.Count} Mods im Katalog · {Rows.Count} sichtbar";
+            Status = string.Format(Strings.T("status.catalog_total"), _allEntries.Count, Rows.Count);
         }
         catch (OperationCanceledException) { /* silent */ }
         catch (Exception ex)
         {
             Log.Warn(ex, "Katalog-Load abgebrochen");
-            Status = $"Fehler beim Laden: {ex.Message}";
+            Status = string.Format(Strings.T("status.catalog_load_error"), ex.Message);
         }
         finally
         {
@@ -269,7 +269,7 @@ public sealed partial class ModHubViewModel : ObservableObject
             var pageEntries = await _hub.FetchCatalogPageAsync(page, Language, ct);
             if (pageEntries.Count == 0) break;
             AddEntries(pageEntries);
-            Status = $"GIANTS Seite {page} · {Rows.Count} sichtbar";
+            Status = string.Format(Strings.T("status.giants_page"), page, Rows.Count);
             page++;
             if (pageEntries.Count < 20) break;
             await Task.Delay(TimeSpan.FromMilliseconds(300), ct);
@@ -485,13 +485,13 @@ public sealed partial class ModHubViewModel : ObservableObject
             Log.Warn("Download abgebrochen — kein mod_id aus URL extrahierbar: {url}",
                 Selected.Source.DetailUrl);
             _host.Notifications.Notify(
-                $"Keine Mod-ID aus URL erkennbar: {Selected.Source.DetailUrl}",
+                string.Format(Strings.T("notify.no_mod_id_from_url"), Selected.Source.DetailUrl),
                 NotificationLevel.Warning);
             return;
         }
         Log.Info("Starte Download: mod_id={id} · Titel={title}", modId, Selected.Source.Title);
 
-        using var scope = _host.BeginProgress($"Download: {Selected.Source.Title}");
+        using var scope = _host.BeginProgress(string.Format(Strings.T("progress.download_prefix"), Selected.Source.Title));
         var progress = new Progress<ModDownloadProgress>(p =>
         {
             var frac = p.Fraction ?? 0;
@@ -503,17 +503,17 @@ public sealed partial class ModHubViewModel : ObservableObject
                 default, Selected.Source.PreviewUrl);
             if (result is null)
             {
-                _host.Notifications.Notify("Download fehlgeschlagen (siehe Log).", NotificationLevel.Error);
+                _host.Notifications.Notify(Strings.T("notify.download_failed"), NotificationLevel.Error);
                 return;
             }
-            _host.Notifications.Notify($"Heruntergeladen: {result.FileName}", NotificationLevel.Success);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.downloaded_prefix"), result.FileName), NotificationLevel.Success);
             _downloadBus.RaiseDownloadsChanged(result.FileName);
         }
         catch (Exception ex)
         {
             Log.Warn(ex, "ModHub-Download fehlgeschlagen für {Title} (mod_id={Id})",
                 Selected.Source.Title, modId);
-            _host.Notifications.Notify($"Fehler: {ex.Message}", NotificationLevel.Error);
+            _host.Notifications.Notify(string.Format(Strings.T("notify.error_prefix"), ex.Message), NotificationLevel.Error);
         }
     }
 
@@ -591,7 +591,7 @@ public sealed partial class ModHubViewModel : ObservableObject
         if (!await _host.Ai.IsAvailableAsync())
         {
             _host.Notifications.Notify(
-                "KI-Provider nicht erreichbar — bitte in den KroModIx-Einstellungen konfigurieren.",
+                Strings.T("notify.ai_unavailable"),
                 NotificationLevel.Warning);
             return;
         }
@@ -601,17 +601,17 @@ public sealed partial class ModHubViewModel : ObservableObject
 
         SummaryVisible = true;
         SummaryBusy = true;
-        SummaryText = $"Lade Detail-Beschreibung für \"{Selected.Source.Title}\" …";
+        SummaryText = string.Format(Strings.T("status.summary_loading"), Selected.Source.Title);
         try
         {
             var detail = await _hub.FetchModDetailAsync(modId, Language);
             if (detail is null || string.IsNullOrWhiteSpace(detail.DescriptionText))
             {
-                SummaryText = "Keine Beschreibung im Detail-Endpoint gefunden.";
+                SummaryText = Strings.T("status.summary_no_desc");
                 return;
             }
 
-            SummaryText = $"KI-Zusammenfassung wird erstellt via {_host.Ai.ProviderInfo} …";
+            SummaryText = string.Format(Strings.T("status.summary_building"), _host.Ai.ProviderInfo);
             var systemPrompt = "Du bist ein deutschsprachiger LS25-Mod-Reviewer. " +
                 "Fasse die Mod-Beschreibung in 3–5 Sätzen zusammen: " +
                 "Was macht der Mod? Welche Fahrzeuge/Objekte/Features? Zielgruppe? " +
@@ -619,13 +619,13 @@ public sealed partial class ModHubViewModel : ObservableObject
             var userPrompt = $"Titel: {detail.Title}\nAutor: {detail.Author}\n\nBeschreibung:\n{detail.DescriptionText}";
             var answer = await _host.Ai.CompleteAsync(systemPrompt, userPrompt);
             SummaryText = string.IsNullOrWhiteSpace(answer)
-                ? "KI hat keine Antwort geliefert."
+                ? Strings.T("status.summary_no_answer")
                 : answer;
         }
         catch (Exception ex)
         {
             Log.Warn(ex, "Summarize fehlgeschlagen für Mod {Id}", modId);
-            SummaryText = $"Fehler: {ex.Message}";
+            SummaryText = string.Format(Strings.T("notify.error_prefix"), ex.Message);
         }
         finally
         {
