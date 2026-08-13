@@ -47,9 +47,10 @@ Detail-Dialog, Backup/Restore.
 - KI-Provider wird zentral im Host konfiguriert (`_host.Ai`)
 
 ### IUpdateNotifier
-Grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Katalog-Einträgen
-UND bei verfügbaren Updates für deine installierten Mods (Auto-Check
-läuft 20 s nach Plugin-Load im Hintergrund).
+Grüner ↑-Badge auf der FS25-Kachel **nur bei echten Updates für deine
+installierten Mods** (v1.13.1). Auto-Check läuft 20 s nach Plugin-Load
+im Hintergrund. Neue ModHub-Katalog-Einträge sind ein Community-News-
+Signal und werden bewusst nicht mehr im Actionable-Badge summiert.
 
 ## Installation
 
