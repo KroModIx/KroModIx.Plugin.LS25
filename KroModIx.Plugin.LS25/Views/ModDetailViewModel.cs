@@ -195,10 +195,7 @@ public sealed partial class ModDetailViewModel : ObservableObject
         SummaryText = string.Format(Strings.T("detail.summary.busy"), _host.Ai.ProviderInfo);
         try
         {
-            var systemPrompt = "Du bist ein deutschsprachiger LS25-Mod-Reviewer. " +
-                "Fasse die Mod-Beschreibung in 3–5 Sätzen zusammen: " +
-                "Was macht der Mod? Welche Fahrzeuge/Objekte/Features? Zielgruppe? " +
-                "Kein Werbe-Sprech, sachlich.";
+            var systemPrompt = Strings.T("ai.prompt.summary_system");
             var userPrompt = $"Titel: {Title}\nAutor: {Author}\n\nBeschreibung:\n{Description}";
             var answer = await _host.Ai.CompleteAsync(systemPrompt, userPrompt);
             SummaryText = string.IsNullOrWhiteSpace(answer) ? Strings.T("detail.summary.no_answer") : answer;

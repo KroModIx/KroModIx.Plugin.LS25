@@ -32,6 +32,9 @@ public static class Strings
 
     private static readonly Dictionary<string, string> De = new()
     {
+        // KI-Prompts (v1.16 sprachabhaengig)
+        ["ai.prompt.summary_system"] = "Du bist ein deutschsprachiger LS25-Mod-Reviewer. Fasse die Mod-Beschreibung in 3-5 Saetzen zusammen: Was macht der Mod? Welche Fahrzeuge/Objekte/Features? Zielgruppe? Kein Werbe-Sprech, sachlich. Antworte auf Deutsch.",
+
         // Tab-Labels
         ["tab.installed"] = "Installiert",
         ["tab.modhub"] = "ModHub",
@@ -226,6 +229,9 @@ public static class Strings
 
     private static readonly Dictionary<string, string> En = new()
     {
+        // AI prompts (v1.16 language-aware)
+        ["ai.prompt.summary_system"] = "You are an English-language FS25 mod reviewer. Summarize the mod description in 3-5 sentences: What does the mod do? Which vehicles/objects/features? Target audience? No marketing language, factual. Respond in English.",
+
         // Tab-Labels
         ["tab.installed"] = "Installed",
         ["tab.modhub"] = "ModHub",

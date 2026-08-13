@@ -612,10 +612,7 @@ public sealed partial class ModHubViewModel : ObservableObject
             }
 
             SummaryText = string.Format(Strings.T("status.summary_building"), _host.Ai.ProviderInfo);
-            var systemPrompt = "Du bist ein deutschsprachiger LS25-Mod-Reviewer. " +
-                "Fasse die Mod-Beschreibung in 3–5 Sätzen zusammen: " +
-                "Was macht der Mod? Welche Fahrzeuge/Objekte/Features? Zielgruppe? " +
-                "Kein Werbe-Sprech, sachlich.";
+            var systemPrompt = Strings.T("ai.prompt.summary_system");
             var userPrompt = $"Titel: {detail.Title}\nAutor: {detail.Author}\n\nBeschreibung:\n{detail.DescriptionText}";
             var answer = await _host.Ai.CompleteAsync(systemPrompt, userPrompt);
             SummaryText = string.IsNullOrWhiteSpace(answer)
