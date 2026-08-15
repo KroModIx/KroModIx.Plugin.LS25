@@ -40,6 +40,14 @@ public sealed partial class ModHubViewModel : ObservableObject
     private readonly List<ModHubEntry> _allEntries = new();
     private HashSet<string>? _seenSnapshot;
     private CancellationTokenSource? _fullLoadCts;
+    // v1.17.0: pro GIANTS-Kategorie-Filter-Key die DetailUrls der Mods
+    // in dieser Kategorie. Wird lazy per Server-Roundtrip populiert wenn
+    // der User die Kategorie erstmalig auswaehlt (bis zu 5 Seiten Pagination,
+    // hard cap). Damit filtert der Client echt statt gegen das Rubrik-Badge.
+    private readonly Dictionary<string, HashSet<string>> _categoryUrls =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Task<HashSet<string>>> _categoryUrlLoads =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public ModHubViewModel(ModHubService hub, HofHirschfeldCatalogService hof,
         ModhosterCatalogService modhoster, CatalogCache cache,
@@ -135,9 +143,74 @@ public sealed partial class ModHubViewModel : ObservableObject
     private bool _summaryBusy;
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
-    partial void OnSelectedCategoryChanged(ModHubCategory? value) => ApplyFilter();
+    partial void OnSelectedCategoryChanged(ModHubCategory? value)
+    {
+        // v1.17.0: Bei aktivem Kategorie-Filter erst die Mod-URLs der
+        // Kategorie server-side laden (einmal per Kategorie gecached),
+        // dann filtert ApplyFilter gegen dieses Set. Ohne den Server-
+        // Roundtrip haetten wir kein Wissen welche Mod in welcher GIANTS-
+        // Kategorie liegt — der ursprueng client-side Match gegen das
+        // Rubrik-Badge lieferte immer 0 Rows.
+        if (value is not null && !string.IsNullOrEmpty(value.Filter)
+            && !_categoryUrls.ContainsKey(value.Filter))
+        {
+            _ = EnsureCategoryUrlsAsync(value.Filter);
+        }
+        ApplyFilter();
+    }
     partial void OnSelectedSourceChanged(SourceFilterOption? value) => ApplyFilter();
     partial void OnSelectedSortChanged(CatalogSortOption? value) => ApplyFilter();
+
+    /// <summary>v1.17.0: laedt die DetailUrls aller Mods einer GIANTS-Kategorie
+    /// (bis Page 5, sollte fuer alle Kategorien reichen — die meisten haben
+    /// deutlich weniger). Ergebnis wird gecached. Bei Erfolg triggert der
+    /// Filter neu → gecachte Rows werden entsprechend gefiltert.</summary>
+    private async Task EnsureCategoryUrlsAsync(string filterKey)
+    {
+        if (_categoryUrls.ContainsKey(filterKey)) return;
+        if (_categoryUrlLoads.TryGetValue(filterKey, out var existing))
+        {
+            await existing;
+            return;
+        }
+        var task = LoadCategoryUrlsCoreAsync(filterKey);
+        _categoryUrlLoads[filterKey] = task;
+        try
+        {
+            var urls = await task;
+            _categoryUrls[filterKey] = urls;
+            // Rows neu filtern falls User noch auf dieser Kategorie steht.
+            if (SelectedCategory?.Filter == filterKey)
+                await Dispatcher.UIThread.InvokeAsync(ApplyFilter);
+        }
+        finally { _categoryUrlLoads.Remove(filterKey); }
+    }
+
+    private async Task<HashSet<string>> LoadCategoryUrlsCoreAsync(string filterKey)
+    {
+        var urls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        const int MaxPages = 5;
+        for (int page = 1; page <= MaxPages; page++)
+        {
+            IReadOnlyList<ModHubEntry> pageEntries;
+            try
+            {
+                pageEntries = await _hub.FetchCatalogPageAsync(page, Language, filter: filterKey);
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Kategorie-Fetch Seite {P} fuer {F} fehlgeschlagen", page, filterKey);
+                break;
+            }
+            if (pageEntries.Count == 0) break;
+            foreach (var e in pageEntries)
+                if (!string.IsNullOrEmpty(e.DetailUrl)) urls.Add(e.DetailUrl);
+            if (pageEntries.Count < 20) break;
+            await Task.Delay(200);
+        }
+        Log.Info("Kategorie {F}: {N} Mods geladen", filterKey, urls.Count);
+        return urls;
+    }
 
     private async Task InitializeAsync()
     {
@@ -391,6 +464,14 @@ public sealed partial class ModHubViewModel : ObservableObject
         Rows.Clear();
         var missingCover = new List<CatalogRow>();
 
+        // v1.17.0: bei aktivem Kategorie-Filter der noch laedt eine kurze
+        // Status-Info geben, sonst sieht die 0-Row-View nach „Bug" aus.
+        if (SelectedCategory is not null && !string.IsNullOrEmpty(SelectedCategory.Filter)
+            && !_categoryUrls.ContainsKey(SelectedCategory.Filter))
+        {
+            Status = string.Format(Strings.T("status.category_loading"), SelectedCategory.Label);
+        }
+
         // Installed-Titel einmal normalisieren (Fuzzy-Match für ✓ INSTALLIERT-
         // Badge). Analog LS-ModManager: normalisierte Filename gegen
         // normalisierten Titel, Substring in beide Richtungen.
@@ -468,8 +549,14 @@ public sealed partial class ModHubViewModel : ObservableObject
         }
         if (SelectedCategory is not null && !string.IsNullOrEmpty(SelectedCategory.Filter))
         {
-            if (!row.Source.Category.Contains(SelectedCategory.Label, StringComparison.OrdinalIgnoreCase))
+            // v1.17.0: echter Filter gegen die vom Server gelieferten Mod-URLs
+            // der Kategorie. Solange das Set noch laedt (per EnsureCategory-
+            // UrlsAsync) zeigen wir keine Rows — sonst waere die Reihenfolge
+            // "alles kurz weg → Set da → 5 Rows plopp" verwirrend.
+            if (!_categoryUrls.TryGetValue(SelectedCategory.Filter, out var allowed))
                 return false;
+            if (string.IsNullOrEmpty(row.Source.DetailUrl)) return false;
+            if (!allowed.Contains(row.Source.DetailUrl)) return false;
         }
         return true;
     }
