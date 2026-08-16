@@ -70,6 +70,27 @@ public sealed class ModPreviewService
         }, ct).ConfigureAwait(false);
     }
 
+    /// <summary>v1.17.0: Bytes-Variante fuer den zentralen Host-Bild-Decoder
+    /// (<see cref="IImageDecoder"/>). Nutzt intern
+    /// <see cref="GetOrExtractInstalledPreviewAsync"/> und liest das Cache-File
+    /// als Bytes zurueck — der Aufrufer schickt die Bytes an
+    /// <c>host.Images.DecodeAsync</c> und bekommt eine Avalonia-Bitmap ohne
+    /// selbst einen Bitmap-Ctor zu instanziieren.</summary>
+    public async Task<byte[]?> GetPreviewBytesAsync(string zipPath, CancellationToken ct = default)
+    {
+        var path = await GetOrExtractInstalledPreviewAsync(zipPath, ct).ConfigureAwait(false);
+        if (path is null) return null;
+        try
+        {
+            return await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Preview-Bytes-Read fehlgeschlagen für {p}", path);
+            return null;
+        }
+    }
+
     /// <summary>Ableitung eines stabilen Cache-Keys aus einer Cover-URL. Für
     /// GIANTS-URLs (Format <c>.../storage/&lt;id&gt;/&lt;file&gt;</c>) nehmen wir
     /// die mod_id + Dateiname — der bleibt stabil auch wenn GIANTS die CDN-
@@ -148,6 +169,26 @@ public sealed class ModPreviewService
         catch (Exception ex)
         {
             Log.Warn(ex, "Cover-Download-Exception: {url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>v1.17.0: Bytes-Variante fuer den zentralen Host-Bild-Decoder.
+    /// Nutzt intern <see cref="GetOrDownloadCoverAsync"/> und liest das
+    /// Cache-File als Bytes zurueck. Cover werden auch bei WebP/AVIF/DDS
+    /// vom Host korrekt dekodiert — Plugin muss keine Format-Fallbacks
+    /// mehr selbst kennen.</summary>
+    public async Task<byte[]?> GetCoverBytesAsync(string url, CancellationToken ct = default)
+    {
+        var path = await GetOrDownloadCoverAsync(url, ct).ConfigureAwait(false);
+        if (path is null) return null;
+        try
+        {
+            return await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Cover-Bytes-Read fehlgeschlagen für {p}", path);
             return null;
         }
     }

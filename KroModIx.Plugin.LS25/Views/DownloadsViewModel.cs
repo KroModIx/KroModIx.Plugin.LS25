@@ -137,20 +137,15 @@ public sealed partial class DownloadsViewModel : ObservableObject
         {
             try
             {
-                var path = await _previews.GetOrExtractInstalledPreviewAsync(row.Source.FilePath);
-                if (path is null || !File.Exists(path)) continue;
-                Bitmap? bmp = null;
-                try
+                // v1.17.0: Rohbytes ueber ModPreviewService, Decode via
+                // Host-Baukasten (IImageDecoder). Der Host erkennt DDS/WebP
+                // per Magic-Bytes und kuemmert sich um Format-Fallbacks.
+                var bytes = await _previews.GetPreviewBytesAsync(row.Source.FilePath);
+                if (bytes is null) continue;
+                var bmp = await _host.Images.DecodeAsync(bytes);
+                if (bmp is null)
                 {
-                    bmp = await Task.Run(() =>
-                    {
-                        using var s = File.OpenRead(path);
-                        return new Bitmap(s);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _host.Logger.Warn(ex, "Downloads-Preview-Bitmap-Decode {p}", path);
+                    _host.Logger.Debug("Downloads-Preview-Decode fehlgeschlagen: {p}", row.Source.FilePath);
                     continue;
                 }
                 await Dispatcher.UIThread.InvokeAsync(() => row.Preview = bmp);

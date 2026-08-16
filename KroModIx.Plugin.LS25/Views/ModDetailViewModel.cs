@@ -127,20 +127,14 @@ public sealed partial class ModDetailViewModel : ObservableObject
         {
             try
             {
-                var path = await _previews.GetOrDownloadCoverAsync(s.Url);
-                if (path is null || !File.Exists(path)) continue;
-                Bitmap? bmp = null;
-                try
+                // v1.17.0: Rohbytes ueber ModPreviewService, Decode via
+                // Host-Baukasten (IImageDecoder).
+                var bytes = await _previews.GetCoverBytesAsync(s.Url);
+                if (bytes is null) continue;
+                var bmp = await _host.Images.DecodeAsync(bytes);
+                if (bmp is null)
                 {
-                    bmp = await Task.Run(() =>
-                    {
-                        using var fs = File.OpenRead(path);
-                        return new Bitmap(fs);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Log.Warn(ex, "Screenshot-Bitmap-Decode {p}", path);
+                    Log.Debug("Screenshot-Decode fehlgeschlagen: {u}", s.Url);
                     continue;
                 }
                 await Dispatcher.UIThread.InvokeAsync(() => s.Bitmap = bmp);

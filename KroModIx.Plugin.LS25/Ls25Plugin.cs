@@ -15,9 +15,9 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
     public PluginMetadata Metadata { get; } = new(
         Id: "kroste.ls25",
         DisplayName: "Landwirtschafts-Simulator 25",
-        Version: "1.16.1",
+        Version: "1.17.0",
         Author: "Kroste",
-        Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. v1.16.0: sprachabhaengige KI-Prompts. v1.15.0: DE+EN-Uebersetzung aller User-facing Strings. v1.14: DDS-Preview mit ffmpeg-Fallback fuer BC7 + exotische DXT-Kompressionen. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung, grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Einträgen (IUpdateNotifier).");
+        Description: "Mod-Manager für Farming Simulator 25 — Kroste-Card-Look. v1.17.0: Cover-Decode ueber Host-IImageDecoder-Baukasten (Contracts v1.18.0) — DDS/WebP-Convert-Chain vom Host uebernommen. v1.16.0: sprachabhaengige KI-Prompts. v1.15.0: DE+EN-Uebersetzung aller User-facing Strings. v1.14: DDS-Preview mit ffmpeg-Fallback fuer BC7 + exotische DXT-Kompressionen. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub, Backup/Restore, KI-Zusammenfassung, grüner ↑-Badge auf der FS25-Kachel bei neuen ModHub-Einträgen (IUpdateNotifier).");
 
     public IReadOnlyList<GameTarget> Targets { get; } = new[]
     {

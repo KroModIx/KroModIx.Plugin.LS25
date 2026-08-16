@@ -438,21 +438,13 @@ public sealed partial class ModHubViewModel : ObservableObject
         await _coverGate.WaitAsync();
         try
         {
-            var path = await _previews.GetOrDownloadCoverAsync(row.Source.PreviewUrl);
-            if (path is null || !File.Exists(path)) return;
-            // Bitmap OFF-UI-Thread dekodieren — Skia auf Linux liest den Stream
-            // ohne GL-Kontext. Nur die Property-Zuweisung MUSS auf UI-Thread
-            // (weil der Bindings-Push den PropertyChanged-Event feuert).
-            Bitmap? bmp = null;
-            try
-            {
-                bmp = await Task.Run(() =>
-                {
-                    using var s = File.OpenRead(path);
-                    return new Bitmap(s);
-                });
-            }
-            catch (Exception ex) { Log.Warn(ex, "Cover-Bitmap-Decode {p}", path); return; }
+            // v1.17.0: Rohbytes ueber ModPreviewService, Decode via
+            // Host-Baukasten (IImageDecoder). Thread-Affinity + Format-
+            // Fallbacks (DDS/WebP) sind Host-Sache.
+            var bytes = await _previews.GetCoverBytesAsync(row.Source.PreviewUrl);
+            if (bytes is null) return;
+            var bmp = await _host.Images.DecodeAsync(bytes);
+            if (bmp is null) { Log.Debug("Cover-Decode fehlgeschlagen: {u}", row.Source.PreviewUrl); return; }
             await Dispatcher.UIThread.InvokeAsync(() => row.Cover = bmp);
         }
         catch (Exception ex) { Log.Warn(ex, "Cover-Load fehlgeschlagen: {u}", row.Source.PreviewUrl); }

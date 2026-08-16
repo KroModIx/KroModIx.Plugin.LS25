@@ -180,23 +180,15 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         {
             try
             {
-                var path = await _previews.GetOrExtractInstalledPreviewAsync(row.Source.FilePath);
-                if (path is null || !File.Exists(path)) continue;
-                // Bitmap OFF-UI-Thread dekodieren (Skia auf Linux liest den
-                // Stream ohne GL-Kontext). Nur die Property-Zuweisung MUSS auf
-                // UI-Thread (weil der PropertyChanged-Event dort feuern muss).
-                Bitmap? bmp = null;
-                try
+                // v1.17.0: Rohbytes ueber ModPreviewService, Decode via
+                // Host-Baukasten (IImageDecoder). DDS/WebP-Fallbacks +
+                // Thread-Affinity uebernimmt der Host zentral.
+                var bytes = await _previews.GetPreviewBytesAsync(row.Source.FilePath);
+                if (bytes is null) continue;
+                var bmp = await _host.Images.DecodeAsync(bytes);
+                if (bmp is null)
                 {
-                    bmp = await Task.Run(() =>
-                    {
-                        using var s = File.OpenRead(path);
-                        return new Bitmap(s);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _host.Logger.Debug(ex, "Preview-Bitmap-Decode fehlgeschlagen: {p}", path);
+                    _host.Logger.Debug("Preview-Decode fehlgeschlagen: {p}", row.Source.FilePath);
                     continue;
                 }
                 await Dispatcher.UIThread.InvokeAsync(() => row.Preview = bmp);

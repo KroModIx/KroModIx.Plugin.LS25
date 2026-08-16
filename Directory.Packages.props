@@ -1,7 +1,7 @@
 <Project>
   <ItemGroup>
-    <!-- v1.7.0: IUpdateNotifier (grüne ↑-Badges pro Sidebar-Kachel). -->
-    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.7.0" />
+    <!-- v1.18.0: IImageDecoder-Baukasten (Host uebernimmt DDS/WebP/AVIF-Convert-Chain). -->
+    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.18.0" />
     <PackageVersion Include="Avalonia" Version="12.1.0" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="MinVer" Version="7.0.0" />
