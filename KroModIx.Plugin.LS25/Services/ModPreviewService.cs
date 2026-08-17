@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
+using KroModIx.Plugin.Contracts;
 using NLog;
 
 namespace KroModIx.Plugin.LS25.Services;
@@ -16,6 +18,13 @@ namespace KroModIx.Plugin.LS25.Services;
 /// vom GIANTS-CDN. Cache liegt in <see cref="Ls25Paths.PreviewsCacheDir"/>,
 /// pro Mod ein basename+Extension. Existierende Cache-Files werden nicht
 /// überschrieben — teure Extraktion läuft nur einmal.
+///
+/// <para>v1.18.0: DDS-Konvertierung uebernimmt der zentrale Host-
+/// <see cref="IImageDecoder"/> (Contracts v1.18). Der Reader liefert die
+/// rohen Bytes aus der ZIP (PNG/JPG oder DDS); wir schreiben PNG/JPG
+/// direkt in den Cache und schicken DDS-Bytes durch den Host-Decoder,
+/// dessen <see cref="Avalonia.Media.Imaging.Bitmap"/> wir per
+/// <c>Bitmap.Save(Stream)</c> als PNG in den Cache serialisieren.</para>
 /// </summary>
 public sealed class ModPreviewService
 {
@@ -25,11 +34,13 @@ public sealed class ModPreviewService
     private readonly Ls25Paths _paths;
     private readonly ModDescReader _reader;
     private readonly HttpClient _http;
+    private readonly IImageDecoder _images;
 
-    public ModPreviewService(Ls25Paths paths, ModDescReader reader, HttpClient? http = null)
+    public ModPreviewService(Ls25Paths paths, ModDescReader reader, IImageDecoder images, HttpClient? http = null)
     {
         _paths = paths;
         _reader = reader;
+        _images = images;
         _http = http ?? DefaultHttp;
 
         // GIANTS-CDN gibt Cover nur mit Referer frei — sonst HTTP 403.
@@ -42,32 +53,63 @@ public sealed class ModPreviewService
     }
 
     /// <summary>Liefert Cache-Path zu einer Mod-ZIP. Wenn kein Cache existiert,
-    /// wird das Preview aus dem ZIP extrahiert und gespeichert. Läuft im Hintergrund-
-    /// Thread — extrahieren + DDS-decode kosten je nach Größe 10–100 ms.</summary>
+    /// wird das Preview aus dem ZIP extrahiert und gespeichert. PNG/JPG landet
+    /// unverändert im Cache; DDS wird über den Host-<see cref="IImageDecoder"/>
+    /// konvertiert und als PNG persistiert.</summary>
     public async Task<string?> GetOrExtractInstalledPreviewAsync(string zipPath, CancellationToken ct = default)
     {
         var cached = _paths.FindExistingPreview(zipPath);
         if (cached is not null) return cached;
 
-        return await Task.Run(() =>
+        byte[]? rawBytes;
+        try
         {
+            rawBytes = await Task.Run(() => _reader.Read(zipPath).PreviewBytes, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Preview-Read fehlgeschlagen für {p}", zipPath);
+            return null;
+        }
+        if (rawBytes is null || rawBytes.Length == 0) return null;
+
+        var ext = Ls25Paths.GuessImageExtension(rawBytes);
+        if (ext == ".jpg" || ext == ".png")
+        {
+            // Direkt aus der ZIP verwendbar — kein Decode nötig.
+            var target = _paths.PreviewCacheBasePathFor(zipPath) + ext;
             try
             {
-                var result = _reader.Read(zipPath);
-                if (result.PreviewPngBytes is null || result.PreviewPngBytes.Length == 0)
-                    return null;
-                var ext = Ls25Paths.GuessImageExtension(result.PreviewPngBytes);
-                if (ext == ".bin") ext = ".png"; // Reader liefert PNG-Bytes bei DDS-Decode
-                var target = _paths.PreviewCacheBasePathFor(zipPath) + ext;
-                File.WriteAllBytes(target, result.PreviewPngBytes);
+                await File.WriteAllBytesAsync(target, rawBytes, ct).ConfigureAwait(false);
                 return target;
             }
             catch (Exception ex)
             {
-                Log.Debug(ex, "Preview-Extract fehlgeschlagen für {p}", zipPath);
-                return (string?)null;
+                Log.Debug(ex, "Preview-Write fehlgeschlagen für {p}", zipPath);
+                return null;
             }
-        }, ct).ConfigureAwait(false);
+        }
+
+        // Fallback: DDS/andere Formate — Host-Decoder ansprechen und die
+        // resultierende Bitmap als PNG-Bytes persistieren.
+        try
+        {
+            var bitmap = await _images.DecodeAsync(rawBytes, ct).ConfigureAwait(false);
+            if (bitmap is null)
+            {
+                Log.Debug("Host-IImageDecoder lieferte null für {p}", zipPath);
+                return null;
+            }
+            var target = _paths.PreviewCacheBasePathFor(zipPath) + ".png";
+            using (var fs = File.Create(target))
+                bitmap.Save(fs, PngBitmapEncoderOptions.Default);
+            return target;
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Preview-Convert fehlgeschlagen für {p}", zipPath);
+            return null;
+        }
     }
 
     /// <summary>v1.17.0: Bytes-Variante fuer den zentralen Host-Bild-Decoder

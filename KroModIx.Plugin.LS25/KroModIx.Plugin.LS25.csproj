@@ -4,8 +4,8 @@
     <RootNamespace>KroModIx.Plugin.LS25</RootNamespace>
     <AssemblyName>KroModIx.Plugin.LS25</AssemblyName>
     <!-- Plugin-DLL braucht ihre transitiven Dependencies im Bundle
-         (HtmlAgilityPack, Pfim, SkiaSharp inkl. native runtimes/).
-         Ohne diese Property landen sie nicht in bin/. -->
+         (HtmlAgilityPack). Pfim/SkiaSharp sind ab v1.18.0 raus —
+         DDS-Decode uebernimmt der Host-IImageDecoder. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
@@ -17,10 +17,8 @@
                       PrivateAssets="all" ExcludeAssets="runtime" />
     <PackageReference Include="CommunityToolkit.Mvvm"
                       PrivateAssets="all" ExcludeAssets="runtime" />
-    <!-- Diese sind plugin-spezifisch und müssen mit ins Bundle: -->
+    <!-- Plugin-spezifisch, muss ins Bundle: -->
     <PackageReference Include="HtmlAgilityPack" />
-    <PackageReference Include="Pfim" />
-    <PackageReference Include="SkiaSharp" />
   </ItemGroup>
 
   <ItemGroup>

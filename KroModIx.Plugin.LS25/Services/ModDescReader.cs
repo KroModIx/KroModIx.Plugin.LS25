@@ -11,18 +11,22 @@ namespace KroModIx.Plugin.LS25.Services;
 
 /// <summary>
 /// Liest <c>modDesc.xml</c> aus einer LS/FS-Mod-ZIP und extrahiert die Metadaten
-/// plus optional ein Vorschau-PNG. LS25-Mods verwenden meist <c>icon.dds</c> —
-/// wir suchen zuerst nach PNG-Alternativen (icon.png, store_*.png), und wenn
-/// es keine gibt, dekodieren wir die DDS via <see cref="DdsToPngConverter"/>
-/// zu PNG. So bekommen praktisch alle LS25-Mods eine echte Preview statt
-/// nur den 🚜-Emoji-Fallback.
+/// plus optional die rohen Preview-Bild-Bytes. LS25-Mods verwenden meist
+/// <c>icon.dds</c> — wir suchen zuerst nach PNG-/JPG-Alternativen (icon.png,
+/// store_*.png), und wenn es keine gibt, geben wir die DDS-Bytes UNVERÄNDERT
+/// zurück. Der Aufrufer (<see cref="ModPreviewService"/>) entscheidet dann via
+/// zentralem Host-<c>IImageDecoder</c>, ob konvertiert werden muss.
+///
+/// <para>v1.18.0: DDS-Decode und Pfim/SkiaSharp-Abhaengigkeit sind komplett
+/// raus. Der Host-Decoder (Contracts v1.18) uebernimmt Format-Konvertierung
+/// zentral fuer alle Plugins.</para>
 ///
 /// <para>Cache: die Ergebnisse werden pro (Path, Mtime, Size) in einem
 /// <see cref="ConcurrentDictionary{TKey, TValue}"/> mit <see cref="Lazy{T}"/>
 /// gecacht. Grund: beim App-Start rufen <c>InstalledModsViewModel</c>,
 /// <c>DownloadsViewModel</c> und <c>ModHubViewModel.ApplyFilter</c> jeweils
 /// <c>ListInstalled()</c> auf — das würde sonst dieselbe ZIP dreimal öffnen
-/// (bei 60 Mods = 180 ZIP-Reads + DDS-Decodes). Mit Cache: 60 Reads total,
+/// (bei 60 Mods = 180 ZIP-Reads). Mit Cache: 60 Reads total,
 /// die anderen zwei Aufrufe treffen instant. Lazy&lt;T&gt; verhindert
 /// Doppelt-Reads wenn alle 3 VMs den Refresh parallel starten.</para>
 /// </summary>
@@ -149,11 +153,12 @@ public sealed class ModDescReader
     }
 
     /// <summary>
-    /// Sucht ein Vorschau-PNG in der ZIP. Reihenfolge:
+    /// Sucht ein Vorschau-Bild in der ZIP. Reihenfolge:
     /// 1. iconFilename mit .png (statt .dds), 2. icon.png, 3. store_*.png,
-    /// 4. beliebiges *.png, 5. iconFilename als DDS (dekodiert),
-    /// 6. beliebiges *.dds (dekodiert). DDS ist Fallback — echte PNGs sind
-    /// meistens bessere Store-Bilder, DDS ist typisch das in-Game-Icon.
+    /// 4. beliebiges *.png, 5. iconFilename als DDS (roh), 6. beliebiges *.dds
+    /// (roh). Rueckgabe sind IMMER die rohen Bytes aus der ZIP — die DDS-
+    /// Dekodierung uebernimmt der Host-<c>IImageDecoder</c> im
+    /// <see cref="ModPreviewService"/>.
     /// </summary>
     private static byte[]? TryExtractPreview(ZipArchive archive, string? iconFileName)
     {
@@ -195,23 +200,26 @@ public sealed class ModDescReader
             if (png is not null) return png;
         }
 
-        // Fallback: DDS dekodieren. Erst der genannte iconFilename, dann beliebige *.dds.
-        // Pfim macht das alles in-Memory; die Konvertierung ist billig (~10 ms für 256px).
+        // Fallback: DDS-Bytes roh zurueckgeben — Host-IImageDecoder konvertiert
+        // im ModPreviewService via Magic-Byte-Detection + ffmpeg-Chain.
         if (!string.IsNullOrWhiteSpace(iconFileName) &&
             iconFileName.EndsWith(".dds", StringComparison.OrdinalIgnoreCase))
         {
             var namedDds = archive.Entries.FirstOrDefault(e =>
                 string.Equals(e.FullName, iconFileName, StringComparison.OrdinalIgnoreCase));
-            var converted = namedDds is null ? null : DdsToPngConverter.Convert(ReadBytes(namedDds));
-            if (converted is not null) return converted;
+            if (namedDds is not null)
+            {
+                var raw = ReadBytes(namedDds);
+                if (raw.Length >= 128) return raw;
+            }
         }
 
         var anyDds = archive.Entries.FirstOrDefault(e =>
             e.FullName.EndsWith(".dds", StringComparison.OrdinalIgnoreCase));
         if (anyDds is not null)
         {
-            var converted = DdsToPngConverter.Convert(ReadBytes(anyDds));
-            if (converted is not null) return converted;
+            var raw = ReadBytes(anyDds);
+            if (raw.Length >= 128) return raw;
         }
 
         return null;
@@ -248,4 +256,8 @@ public sealed class ModDescReader
     }
 }
 
-public sealed record ModReadResult(ModMetadata? Metadata, byte[]? PreviewPngBytes, string? Error);
+/// <summary>Ergebnis von <see cref="ModDescReader.Read"/>. <see cref="PreviewBytes"/>
+/// enthaelt die rohen Bild-Bytes aus der ZIP (PNG/JPG oder DDS). Fuer die
+/// Konvertierung in ein Avalonia-taugliches Format zustaendig ist der Host-
+/// <c>IImageDecoder</c> (siehe <see cref="ModPreviewService"/>).</summary>
+public sealed record ModReadResult(ModMetadata? Metadata, byte[]? PreviewBytes, string? Error);
