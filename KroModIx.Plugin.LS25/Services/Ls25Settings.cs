@@ -59,8 +59,10 @@ public sealed class Ls25SettingsService
             Directory.CreateDirectory(Path.GetDirectoryName(_settingsFile)!);
             var tmp = _settingsFile + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(s, JsonOptions));
-            if (File.Exists(_settingsFile)) File.Delete(_settingsFile);
-            File.Move(tmp, _settingsFile);
+            // Move mit overwrite: Delete-dann-Move hat ein Fenster, in dem
+            // die Datei gar nicht existiert — Crash dazwischen kostet die
+            // kompletten Settings.
+            File.Move(tmp, _settingsFile, overwrite: true);
         }
         catch (Exception ex)
         {

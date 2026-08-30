@@ -93,8 +93,9 @@ public sealed class ModBackupService
             }
         }, ct).ConfigureAwait(false);
 
-        if (File.Exists(targetZipPath)) File.Delete(targetZipPath);
-        File.Move(tmpPath, targetZipPath);
+        // Move mit overwrite: sonst ist ein bestehendes Backup schon
+        // geloescht, wenn das Move scheitert (Platte voll, Datei gesperrt).
+        File.Move(tmpPath, targetZipPath, overwrite: true);
 
         var fileInfo = new FileInfo(targetZipPath);
         Log.Info("Backup erstellt: {p} ({n} Mods, {size} Bytes)",

@@ -63,8 +63,8 @@ public sealed class InstalledUpdatesTracker
         {
             var tmp = _cachePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(_state));
-            if (File.Exists(_cachePath)) File.Delete(_cachePath);
-            File.Move(tmp, _cachePath);
+            // Move mit overwrite — kein Fenster ohne Datei (siehe Ls25Settings).
+            File.Move(tmp, _cachePath, overwrite: true);
         }
         catch (Exception ex)
         {
