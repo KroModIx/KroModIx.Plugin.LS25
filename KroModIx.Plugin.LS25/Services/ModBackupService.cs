@@ -158,7 +158,20 @@ public sealed class ModBackupService
                     var normalizedName = meta.FileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
                         ? meta.FileName.Substring(0, meta.FileName.Length - ".disabled".Length)
                         : meta.FileName;
-                    var tmpZip = Path.Combine(tmpDir, normalizedName);
+                    // meta.FileName kommt aus dem Manifest IM Backup-ZIP, ist
+                    // also Fremd-Input sobald jemand ein Backup weitergibt.
+                    // Ohne diesen Check landet "../../autostart/x.zip" per
+                    // Path.Combine ausserhalb von tmpDir.
+                    var safeName = Path.GetFileName(normalizedName);
+                    if (string.IsNullOrWhiteSpace(safeName)
+                        || !string.Equals(safeName, normalizedName, StringComparison.Ordinal))
+                    {
+                        Log.Warn("Restore: unsicherer Dateiname im Manifest uebersprungen: {n}", meta.FileName);
+                        skipped++;
+                        progress?.Report(new BackupProgress(i + 1, manifest.Mods.Count, meta.FileName));
+                        continue;
+                    }
+                    var tmpZip = Path.Combine(tmpDir, safeName);
                     entry.ExtractToFile(tmpZip, overwrite: true);
 
                     try
