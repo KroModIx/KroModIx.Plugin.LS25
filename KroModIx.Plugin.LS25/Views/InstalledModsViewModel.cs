@@ -14,10 +14,11 @@ using KroModIx.Plugin.LS25.Services;
 
 namespace KroModIx.Plugin.LS25.Views;
 
-public sealed partial class InstalledModsViewModel : ObservableObject
+public sealed partial class InstalledModsViewModel : ObservableObject, IDisposable
 {
     private const string Language = "de";
 
+    private readonly EventHandler<string> _installedHandler;
     private readonly ModInstallService _installer;
     private readonly ModBackupService _backup;
     private readonly ModPreviewService _previews;
@@ -50,9 +51,16 @@ public sealed partial class InstalledModsViewModel : ObservableObject
         // Aktion aus ModHub) ein Mod in den Mods-Ordner geschrieben wurde,
         // aktualisiert sich diese Liste automatisch — kein User-Klick auf
         // „Aktualisieren" nötig.
-        _downloadBus.ModInstalled += (_, _) =>
-            Dispatcher.UIThread.Post(() => Refresh());
+        // Handler als Feld statt Lambda: nur so kann Dispose wieder
+        // abmelden. Als Lambda hielt der Event-Bus diese VM fuer die
+        // restliche Session am Leben, nachdem der Host-Tab-Cache sie
+        // verworfen hat (Sprachwechsel, Plugin-State-Wechsel) — samt
+        // geladener Cover-Bitmaps, und jeder Install refreshte die Leichen mit.
+        _installedHandler = (_, _) => Dispatcher.UIThread.Post(() => Refresh());
+        _downloadBus.ModInstalled += _installedHandler;
     }
+
+    public void Dispose() => _downloadBus.ModInstalled -= _installedHandler;
 
     public string ModsDir { get; }
 
