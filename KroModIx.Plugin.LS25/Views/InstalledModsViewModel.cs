@@ -631,12 +631,10 @@ public sealed partial class InstalledModsViewModel : ObservableObject, IDisposab
         return m.Success && int.TryParse(m.Groups[1].Value, out var id) ? id : null;
     }
 
+    /// <summary>Zweite Kopie derselben Logik wie im InstalledUpdatesChecker —
+    /// beide zeigen jetzt auf den Contracts-Baukasten (v1.27).</summary>
     private static bool IsVersionNewer(string catalogVersion, string installedVersion)
-    {
-        if (!Version.TryParse(catalogVersion.Trim(), out var cat)) return false;
-        if (!Version.TryParse(installedVersion.Trim(), out var inst)) return false;
-        return cat > inst;
-    }
+        => VersionCompare.IsNewer(catalogVersion, installedVersion);
 
     [RelayCommand]
     private async Task CreateBackupAsync()

@@ -7,13 +7,15 @@
   "description": "Mod-Manager für den Landwirtschafts-Simulator 25 (FS25) — Kroste-Card-Look. Per-Row-Buttons, Cover, INSTALLIERT- und ⭐ EMPFOHLEN-Badges, Spielstart via Steam, Mod-Updates, Detail-Dialog, aggregierter ModHub (GIANTS + Hof Hirschfeld + modhoster), Backup/Restore, KI-Zusammenfassung, Bulk-ZIP-Import. v1.18.0: DDS-Decode vollstaendig auf Host-IImageDecoder migriert — Pfim + SkiaSharp aus dem Plugin-Bundle raus (~15 MB Bundle-Ersparnis inkl. nativer libs). v1.17.0: Cover-Decode ueber Host-IImageDecoder-Baukasten. v1.16.0: sprachabhaengige KI-Prompts (Strings.T-Keys). v1.15.0: DE+EN-Uebersetzung aller User-facing Strings. v1.13.1: grüner ↑-Badge nur noch bei echten Mod-Updates.",
   "assembly": "KroModIx.Plugin.LS25.dll",
   "entryType": "KroModIx.Plugin.LS25.Ls25Plugin",
-  "minHostVersion": "1.18.0",
+  "minHostVersion": "1.27.0",
   "targets": [
     {
       "gameId": "farming-simulator-25",
       "displayName": "Farming Simulator 25",
       "steamAppId": 2300320,
-      "alternativeExecutableNames": ["FarmingSimulator2025.exe"],
+      "alternativeExecutableNames": [
+        "FarmingSimulator2025.exe"
+      ],
       "platforms": "Both"
     }
   ],

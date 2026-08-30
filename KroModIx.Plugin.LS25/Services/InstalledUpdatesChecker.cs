@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using KroModIx.Plugin.Contracts;
 using NLog;
 
 namespace KroModIx.Plugin.LS25.Services;
@@ -123,10 +124,10 @@ public sealed class InstalledUpdatesChecker
         return m.Success && int.TryParse(m.Groups[1].Value, out var id) ? id : null;
     }
 
+    /// <summary>Delegiert an den Contracts-Baukasten (v1.27). Die frueheren
+    /// zwei Eigenbau-Kopien im Repo bauten auf Version.TryParse und gaben bei
+    /// unparsebarem Format still false zurueck — Mod-Versionen wie "3",
+    /// "1.2.3b" oder "2.0-hotfix" bekamen damit NIE ein Update gemeldet.</summary>
     private static bool IsVersionNewer(string catalogVersion, string installedVersion)
-    {
-        if (!Version.TryParse(catalogVersion.Trim(), out var cat)) return false;
-        if (!Version.TryParse(installedVersion.Trim(), out var inst)) return false;
-        return cat > inst;
-    }
+        => VersionCompare.IsNewer(catalogVersion, installedVersion);
 }
