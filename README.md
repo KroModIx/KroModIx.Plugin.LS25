@@ -9,6 +9,17 @@
 Mod-ZIP, Update-Discovery für installierte Mods, KI-Zusammenfassung im
 Detail-Dialog, Backup/Restore.
 
+## Voraussetzungen
+
+Braucht den [KroModIx-Host](https://github.com/KroModIx/KroModIx) **ab
+v1.27.0** — dort sitzen der Backup-Baukasten und der gemeinsame
+Versions-Vergleich, gegen die dieses Plugin gebaut ist. Ältere Hosts laden
+das Plugin nicht.
+
+## Screenshot
+
+![Installiert-Tab mit ModHub-Metadaten pro Mod](docs/screenshot.png)
+
 ## Ziel-Spiel
 
 **Farming Simulator 25** — Steam AppId 2300320.
@@ -29,7 +40,7 @@ Detail-Dialog, Backup/Restore.
   zurück. Kein Fehler wenn ffmpeg fehlt — Convert liefert dann null, die
   UI zeigt den Icon-Fallback.
 
-## Features (v1.12.0)
+## Features
 
 ### Installiert-Tab
 - Alle Mods im Mods-Ordner mit Cover-Preview (aus modDesc.xml via
@@ -97,6 +108,18 @@ Braucht Zugriff auf das KroModIx-GitHub-Packages-Feed für
   `packageSourceMapping` (siehe Repo)
 
 Release: Tag `vX.Y.Z` setzen + pushen → GitHub-Action baut Bundle-ZIP.
+
+## Backups vor jedem Install
+
+Bevor das Plugin Dateien ins Spiel schreibt, legt es einen Snapshot des
+Ziel-Verzeichnisses an — bei Einzel-Installs einen pro Mod, bei Bulk-Installs
+**einen** vor dem ganzen Durchlauf. Zurückspielen läuft über das
+Backups-Fenster im Kontextmenü der Sidebar-Kachel; es gibt bewusst kein
+Auto-Rollback, damit du entscheidest, welchen Stand du zurückholst.
+Aufbewahrt werden die letzten zehn Snapshots pro Spiel.
+
+Schlägt ein Snapshot fehl, läuft der Install trotzdem durch (mit Log-Eintrag)
+— das Backup ist ein Netz, kein Türsteher.
 
 ## Lizenz
 
