@@ -307,6 +307,28 @@ public sealed partial class InstalledModsViewModel : ObservableObject, IDisposab
         }
     }
 
+
+    /// <summary>Snapshot VOR jedem File-Write (Kernprinzip 6). Fehler duerfen
+    /// den Install NIEMALS blockieren — der User will installieren, nicht den
+    /// Backup-Service debuggen. Zurueckspielen laeuft ueber das Backups-Fenster
+    /// (Sidebar-Kontextmenue), bewusst ohne Auto-Rollback.</summary>
+    private async Task TrySnapshotAsync(string label)
+    {
+        try
+        {
+            var modsDir = _installer.ModsDir;
+            if (!Directory.Exists(modsDir)) return;
+            await _host.Backup.CreateSnapshotAsync(
+                pluginId: "kroste.ls25", gameKey: modsDir,
+                directories: new[] { modsDir }, label: label);
+            await _host.Backup.PruneAsync("kroste.ls25", modsDir, keepLast: 10);
+        }
+        catch (Exception ex)
+        {
+            _host.Logger.Warn(ex, "Snapshot fehlgeschlagen (Install laeuft trotzdem): {Label}", label);
+        }
+    }
+
     [RelayCommand]
     private async Task InstallFromFileAsync()
     {
@@ -316,6 +338,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject, IDisposab
         if (picked is null) return;
         try
         {
+            await TrySnapshotAsync($"Vor Install von {Path.GetFileName(picked)}");
             var installed = _installer.Install(picked, overwrite: false);
             _host.Notifications.Notify(string.Format(Strings.T("notify.installed_prefix"), installed.FileName), NotificationLevel.Success);
             _downloadBus.RaiseModInstalled(installed.FileName);
@@ -354,6 +377,10 @@ public sealed partial class InstalledModsViewModel : ObservableObject, IDisposab
             okLabel: Strings.T("dialog.btn_install"), cancelLabel: Strings.T("dialog.btn_cancel"));
         if (!confirm) return;
 
+        // Bulk: EIN Snapshot vor der ganzen Schleife, nicht pro Row — beim
+        // Rollback will der User zurueck auf den Stand VOR dem Batch, nicht
+        // zwischen Mod 5 und 6 von 10.
+        await TrySnapshotAsync($"Vor Bulk-Import ({zips.Count} ZIPs)");
         using var scope = _host.BeginProgress(string.Format(Strings.T("progress.bulk_import"), zips.Count));
         int done = 0, failed = 0;
         var lastInstalledFile = "";
@@ -570,6 +597,7 @@ public sealed partial class InstalledModsViewModel : ObservableObject, IDisposab
             await Task.Run(() => _installer.Uninstall(row.Source));
 
             // 3. Neue Version installieren (aus dem Downloads-Ordner)
+            await TrySnapshotAsync($"Vor Update von {row.Title}");
             var newMod = await Task.Run(() => _installer.Install(result.TargetZipPath, overwrite: true));
 
             // 4. Enabled-State übertragen — war die alte deaktiviert, deaktivieren wir die neue ebenfalls.
