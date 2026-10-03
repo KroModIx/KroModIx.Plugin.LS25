@@ -3,7 +3,7 @@
     <!-- v1.18.0: IImageDecoder-Baukasten (Host uebernimmt DDS/WebP/AVIF-Convert-Chain).
          Pfim + SkiaSharp sind mit v1.18.0 dieses Plugins raus — DDS-Decode laeuft
          jetzt zentral ueber _host.Images.DecodeAsync. -->
-    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.27.0" />
+    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.29.0" />
     <PackageVersion Include="Avalonia" Version="12.1.0" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="MinVer" Version="7.0.0" />

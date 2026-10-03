@@ -64,10 +64,16 @@ public sealed class Ls25Plugin : IGameModPlugin, IUpdateNotifier
 
         foreach (var game in activatedGames)
         {
-            var modsDir = _pathResolver.GetModsDir(game);
+            // v1.21.0: Ensure statt Get — ein fehlender mods/-Ordner war bisher
+            // eine Sackgasse. LS25 legt ihn erst beim ersten Mod-Install selbst
+            // an; bis dahin hatte KroModIx kein Install-Ziel und meldete nur
+            // „Mods-Ordner existiert nicht".
+            var modsDir = _pathResolver.EnsureModsDir(game);
             if (modsDir is null)
             {
-                host.Logger.Warn("LS25: konnte keinen Mods-Pfad für {Game} ableiten", game.Target.DisplayName);
+                host.Logger.Warn("LS25: Mods-Ordner weder gefunden noch anlegbar für {Game} "
+                    + "(UserDataDir={Udd}, ProtonPrefix={Pfx})",
+                    game.Target.DisplayName, game.UserDataDir, game.ProtonPrefix);
                 continue;
             }
             var installer = new ModInstallService(modsDir, _reader, _paths);
