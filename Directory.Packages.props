@@ -3,11 +3,18 @@
     <!-- v1.18.0: IImageDecoder-Baukasten (Host uebernimmt DDS/WebP/AVIF-Convert-Chain).
          Pfim + SkiaSharp sind mit v1.18.0 dieses Plugins raus — DDS-Decode laeuft
          jetzt zentral ueber _host.Images.DecodeAsync. -->
-    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.29.0" />
+    <PackageVersion Include="KroModIx.Plugin.Contracts" Version="1.34.0" />
     <PackageVersion Include="Avalonia" Version="12.1.0" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <!-- v0.2: ModHub-Katalog. HtmlAgilityPack scrapt die GIANTS-Site. -->
     <PackageVersion Include="HtmlAgilityPack" Version="1.11.72" />
+
+    <!-- Tests (v1.22.0): das Referenz-Plugin hatte bis dahin KEIN
+         Testprojekt, obwohl ModInstallService loescht und umbenennt. -->
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="FluentAssertions" Version="[7.2.2,8.0.0)" />
   </ItemGroup>
 </Project>

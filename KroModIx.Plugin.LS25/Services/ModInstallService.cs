@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using NLog;
+using KroModIx.Plugin.Contracts;
 
 namespace KroModIx.Plugin.LS25.Services;
 
@@ -18,6 +19,17 @@ public sealed class ModInstallService
     private readonly string _modsDir;
     private readonly ModDescReader _reader;
     private readonly Ls25Paths? _paths;
+
+    /// <summary>Wirft, wenn der Eintrag einem fremden Mod-Manager gehört. Die
+    /// Meldung nennt Verwalter, Folge und Ausweg — am 04.10.2026 hat genau so
+    /// ein Löschen im Icarus-Plugin eine Mod aus dem Spiel genommen, ohne dass
+    /// es auffiel, weil die Quelle woanders unversehrt lag.</summary>
+    private static void NurWennUnser(InstalledMod mod, string verb)
+    {
+        if (mod.CanModify) return;
+        throw new InvalidOperationException(
+            ForeignManagerDetection.Meldung(mod.FileName, mod.ManagedBy, verb));
+    }
 
     public ModInstallService(string modsDir, ModDescReader reader, Ls25Paths? paths = null)
     {
@@ -52,7 +64,8 @@ public sealed class ModInstallService
                 Metadata: read.Metadata,
                 ReadError: read.Error));
         }
-        return result;
+        // Fremdverwaltete Eintraege einmal beim Scan markieren.
+        return result.Select(m => m.MitVerwalterErkennung()).ToList();
     }
 
     /// <summary>Löscht einen Download aus dem Downloads-Ordner. Nur Dateien im
@@ -129,6 +142,7 @@ public sealed class ModInstallService
 
     public void Uninstall(InstalledMod mod)
     {
+        NurWennUnser(mod, "deinstallieren");
         if (!File.Exists(mod.FilePath))
         {
             Log.Warn("Deinstallation: Datei bereits weg: {Path}", mod.FilePath);
@@ -142,6 +156,7 @@ public sealed class ModInstallService
     /// die nicht auf .zip enden — Mod bleibt im Ordner, wird aber nicht geladen.</summary>
     public InstalledMod SetEnabled(InstalledMod mod, bool enabled)
     {
+        NurWennUnser(mod, "umschalten");
         if (mod.IsEnabled == enabled) return mod;
 
         var current = mod.FilePath;

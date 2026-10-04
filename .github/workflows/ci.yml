@@ -30,3 +30,4 @@ jobs:
           dotnet restore
 
       - run: dotnet build --no-restore -c Release
+      - run: dotnet test --no-build -c Release

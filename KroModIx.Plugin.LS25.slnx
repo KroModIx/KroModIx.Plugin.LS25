@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="KroModIx.Plugin.LS25/KroModIx.Plugin.LS25.csproj" />
+  <Project Path="KroModIx.Plugin.LS25.Tests/KroModIx.Plugin.LS25.Tests.csproj" />
 </Solution>
