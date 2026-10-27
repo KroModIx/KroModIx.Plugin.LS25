@@ -44,7 +44,11 @@ jobs:
 
       - name: Restore (Forgejo-Registry)
         env:
-          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # **Nicht der Lauf-Token.** Der gilt nur fuer dieses Repo und
+          # hat keinen Zugriff auf die Pakete der Organisation -- der
+          # Restore scheiterte damit an HTTP 401. KROMODIX_PAKET_TOKEN
+          # ist ein Organisations-Secret mit Paketrechten.
+          NUGET_AUTH_TOKEN: ${{ secrets.KROMODIX_PAKET_TOKEN }}
         run: |
           # Die Quelle heisst seit dem 27.10.2026 kromodix-forgejo und zeigt
           # auf die eigene Forge. Der Benutzername ist beliebig, Forgejo
