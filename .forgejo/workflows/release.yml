@@ -1,0 +1,131 @@
+# **Forgejo-Fassung von .github/workflows/release.yml.**
+#
+# Erzeugt von Werkzeuge/forgejo/workflow-uebertragen.py am 27.10.2026.
+# Gebaut wird fuer git.flexfamily.cloud; die GitHub-Fassung bleibt vorerst
+# daneben bestehen.
+#
+# **Beide Dateien gehoeren synchron.** Wer an den Bauschritten etwas
+# aendert, zieht es hier nach -- sonst laufen die Seiten auseinander, und
+# das faellt erst auf, wenn eine von beiden rot wird.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: Directory.Packages.props
+
+      - name: Version ermitteln
+        id: ver
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "v=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "v=0.0.0-dev.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore (Forgejo-Registry)
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Die Quelle heisst seit dem 27.10.2026 kromodix-forgejo und zeigt
+          # auf die eigene Forge. Der Benutzername ist beliebig, Forgejo
+          # prueft nur den Token.
+          dotnet nuget update source kromodix-forgejo \
+            --username forgejo-actions \
+            --password "${NUGET_AUTH_TOKEN}" \
+            --store-password-in-clear-text
+          dotnet restore
+
+      - name: Build
+        run: >
+          dotnet build --no-restore -c Release
+          -p:Version=${{ steps.ver.outputs.v }}
+
+      - name: Plugin-Bundle packen (Plugin-DLL + plugin.json + plugin-eigene Deps)
+        # Alles aus bin/ AUSSER .pdb + .xml + .deps.json — REKURSIV, sonst
+        # bleiben die 250 MB großen SkiaSharp-Windows-PDBs unter
+        # runtimes/win-*/native/ drin. `rm -f bundle/*.pdb` fängt nur die
+        # erste Ebene, `find … -delete` alle Tiefen.
+        # Die csproj ist so konfiguriert dass Host-Assemblies (Kroste.*,
+        # Avalonia*, CommunityToolkit.Mvvm) gar nicht im Output landen —
+        # alles was hier ist, ist echte Plugin-Runtime-Dep (HtmlAgilityPack,
+        # Pfim, SkiaSharp inkl. runtimes/ native libs).
+        run: |
+          mkdir -p bundle
+          cp -r KroModIx.Plugin.LS25/bin/Release/net10.0/. bundle/
+          find bundle -type f \( -name '*.pdb' -o -name '*.xml' -o -name '*.deps.json' \) -delete
+          # WICHTIG: die plugin.json im Source-Repo enthält eine hart codierte
+          # "version"-Zeile. Beim Release-Tag durch die Tag-Version ersetzen,
+          # sonst hat der PluginUpdateService eine Endlosschleife
+          # („Update verfügbar" → Install → beim nächsten Check wieder verfügbar).
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            sed -i -E 's/("version"\s*:\s*)"[^"]+"/\1"'"${{ steps.ver.outputs.v }}"'"/' bundle/plugin.json
+            echo "== gepatchte plugin.json =="
+            grep '"version"' bundle/plugin.json
+          fi
+          cd bundle
+          zip -r "../KroModIx.Plugin.LS25-${{ steps.ver.outputs.v }}.zip" .
+
+      - name: Release anlegen und Dateien anhaengen
+        env:
+          # Forgejo legt diesen Token je Lauf an; er gilt nur fuer dieses
+          # Repo und nur solange der Lauf dauert.
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SERVER: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          # Besteht das Release schon (zweiter Lauf desselben Tags), werden
+          # die Dateien ersetzt statt mit HTTP 409 abzubrechen.
+          id=$(curl -sf -H "Authorization: token $TOKEN" \
+                 "$SERVER/api/v1/repos/$REPO/releases/tags/$TAG" 2>/dev/null \
+               | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' 2>/dev/null || true)
+          if [ -z "$id" ]; then
+            id=$(curl -sf -X POST -H "Authorization: token $TOKEN" \
+                   -H "Content-Type: application/json" \
+                   -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"body\":\"Gebaut von Forgejo Actions.\"}" \
+                   "$SERVER/api/v1/repos/$REPO/releases" \
+                 | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          fi
+          [ -n "$id" ] || { echo "Keine Release-ID erhalten"; exit 1; }
+
+          hochgeladen=0
+          for datei in KroModIx.Plugin.LS25-*.zip; do
+            [ -f "$datei" ] || continue
+            # Gleichnamigen Anhang vorher loeschen, sonst haengt Forgejo die
+            # Datei ein zweites Mal an statt sie zu ersetzen.
+            alt=$(curl -sf -H "Authorization: token $TOKEN" \
+                    "$SERVER/api/v1/repos/$REPO/releases/$id/assets" 2>/dev/null \
+                  | python3 -c "import json,sys; print(next((str(a['id']) for a in json.load(sys.stdin) if a['name']=='$(basename "$datei")'), ''))" 2>/dev/null || true)
+            [ -n "$alt" ] && curl -s -X DELETE -H "Authorization: token $TOKEN" \
+              "$SERVER/api/v1/repos/$REPO/releases/$id/assets/$alt" >/dev/null
+            echo "lade hoch: $datei ($(du -h "$datei" | cut -f1))"
+            curl -sf -X POST -H "Authorization: token $TOKEN" \
+              -F "attachment=@$datei" \
+              "$SERVER/api/v1/repos/$REPO/releases/$id/assets?name=$(basename "$datei")" >/dev/null
+            hochgeladen=$((hochgeladen+1))
+          done
+          # **Ein Release ohne Dateien ist kein Release.** Lieber hier rot
+          # als eine leere Seite, die niemand bemerkt.
+          [ "$hochgeladen" -gt 0 ] || { echo "Keine Datei hochgeladen"; exit 1; }
+          echo "Fertig ($hochgeladen Dateien): $SERVER/$REPO/releases/tag/$TAG"
