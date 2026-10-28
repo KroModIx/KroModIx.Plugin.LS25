@@ -114,7 +114,9 @@ jobs:
           [ -n "$id" ] || { echo "Keine Release-ID erhalten"; exit 1; }
 
           hochgeladen=0
-          for datei in KroModIx.Plugin.LS25-*.zip; do
+          # download-artifact@v3 legt je Artefakt ein Unterverzeichnis an,
+          # deshalb rekursiv suchen statt im Arbeitsverzeichnis zu raten.
+          for datei in $(find . -type f \( -name "KroModIx.Plugin.LS25-*.zip" \) | sort); do
             [ -f "$datei" ] || continue
             # Gleichnamigen Anhang vorher loeschen, sonst haengt Forgejo die
             # Datei ein zweites Mal an statt sie zu ersetzen.
